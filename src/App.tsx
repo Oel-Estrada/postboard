@@ -43,11 +43,28 @@ function App() {
       <title>
         {selectedUser ? messages.app.pageTitle(selectedUser.name) : messages.app.title}
       </title>
-      <header className="px-4 pt-4 pb-3 md:px-6">
-        <h1 className="text-xl font-semibold">{messages.app.title}</h1>
+      <header className="border-b border-rule bg-card">
+        <div className="flex min-h-14 items-center gap-2.5 px-4 md:px-6">
+          {/* Decorative brand mark: a folder holding two posts. Theme colours, so it
+              follows the palette. */}
+          <svg aria-hidden="true" viewBox="0 0 28 28" className="size-7 shrink-0">
+            <path
+              className="fill-ink"
+              d="M2 6.5A2.5 2.5 0 0 1 4.5 4h6l2.5 3h10.5A2.5 2.5 0 0 1 26 9.5v13a2.5 2.5 0 0 1-2.5 2.5h-19A2.5 2.5 0 0 1 2 22.5Z"
+            />
+            <path
+              className="stroke-card"
+              fill="none"
+              strokeWidth="2"
+              strokeLinecap="round"
+              d="M7 13.5h14M7 18.5h9"
+            />
+          </svg>
+          <h1 className="text-xl font-semibold">{messages.app.title}</h1>
+        </div>
       </header>
       {/* No gap between the columns: the selected user's tab has to touch the panel. */}
-      <main className="px-4 pb-10 md:grid md:grid-cols-[18rem_minmax(0,1fr)] md:px-6">
+      <main className="px-4 pt-4 pb-10 md:grid md:grid-cols-[18rem_minmax(0,1fr)] md:px-6">
         <div
           ref={usersColumnRef}
           // From md the column stays in view, as tall as the window; only the
