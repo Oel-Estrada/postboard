@@ -19,6 +19,12 @@ export default defineConfig({
   use: {
     baseURL: BASE_URL,
     trace: 'retain-on-failure',
+    launchOptions: {
+      // A second fence after page.route: every host but localhost fails to
+      // resolve, so not even a connection (a preconnect hint, a forgotten
+      // route) can reach the real network.
+      args: ['--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE localhost'],
+    },
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
