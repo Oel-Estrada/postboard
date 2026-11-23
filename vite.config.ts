@@ -5,6 +5,9 @@ import { configDefaults, defineConfig } from 'vitest/config'
 // https://vite.dev/config/ (Vitest's defineConfig also types the `test` block)
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // One page and no router: unknown paths get a 404 instead of index.html with a
+  // 200 (dev and preview), so /robots.txt-style probes see what really exists.
+  appType: 'mpa',
   test: {
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
