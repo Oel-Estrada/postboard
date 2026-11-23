@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useUsers } from '../hooks/useUsers'
 import { messages } from '../i18n/messages'
 import { filterUsersByName } from '../lib/filterUsersByName'
@@ -24,14 +24,22 @@ interface UsersPanelProps {
 export function UsersPanel({ selectedUserId, onSelectUser }: UsersPanelProps) {
   const users = useUsers()
   const [query, setQuery] = useState('')
+  const searchRef = useRef<HTMLInputElement>(null)
+
+  // Try again goes away with the error, so focus moves to the search box
+  // instead of dropping to <body>.
+  function handleRetry() {
+    users.retry()
+    searchRef.current?.focus()
+  }
 
   return (
     // From md it fills the column, so the list can shrink and scroll below the search.
     <div className="flex flex-col gap-4 md:min-h-0 md:flex-1 md:pt-1 md:pb-2 md:pr-4">
-      <UserSearch value={query} onChange={setQuery} />
+      <UserSearch ref={searchRef} value={query} onChange={setQuery} />
       {users.status === 'loading' && <LoadingMessage>{messages.users.loading}</LoadingMessage>}
       {users.status === 'error' && (
-        <ErrorMessage onRetry={users.retry}>{messages.users.loadError}</ErrorMessage>
+        <ErrorMessage onRetry={handleRetry}>{messages.users.loadError}</ErrorMessage>
       )}
       {users.status === 'success' && (
         <SearchResults

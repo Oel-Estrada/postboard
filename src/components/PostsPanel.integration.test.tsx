@@ -172,6 +172,8 @@ describe('PostsPanel', () => {
       expect(listedTitles()).toEqual(['Saved before', ...leannePosts.map(({ title }) => title)])
     })
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    // Try again disappeared with the alert; focus stays in the panel, on its heading.
+    expect(screen.getByRole('heading', { level: 2, name: leanne.name })).toHaveFocus()
   })
 
   it('still publishes when storage is unavailable', async () => {

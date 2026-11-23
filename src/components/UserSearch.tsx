@@ -1,9 +1,10 @@
-import { useId } from 'react'
+import { useId, type Ref } from 'react'
 import { messages } from '../i18n/messages'
 
 interface UserSearchProps {
   value: string
   onChange: (value: string) => void
+  ref?: Ref<HTMLInputElement>
 }
 
 /**
@@ -11,8 +12,9 @@ interface UserSearchProps {
  *
  * @param props.value - Current text of the search box (controlled).
  * @param props.onChange - Called with the new text on every change.
+ * @param props.ref - Ref to the input, to move focus to it.
  */
-export function UserSearch({ value, onChange }: UserSearchProps) {
+export function UserSearch({ value, onChange, ref }: UserSearchProps) {
   const inputId = useId()
 
   return (
@@ -37,6 +39,7 @@ export function UserSearch({ value, onChange }: UserSearchProps) {
         {/* Names are identifiers, not prose: no autocorrect or capitalisation.
             The border is muted, not rule: an input's edge needs 3:1 (WCAG 1.4.11). */}
         <input
+          ref={ref}
           id={inputId}
           type="search"
           value={value}

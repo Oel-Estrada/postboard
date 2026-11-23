@@ -16,4 +16,6 @@ test('recovers from an API error with Try again', async ({ page }) => {
 
   await expect(loadError).toBeHidden()
   await expect(page.getByRole('list').first().getByRole('button')).toHaveCount(users.length)
+  // Try again disappeared with the alert; focus goes to the search box, not to <body>.
+  await expect(page.getByRole('searchbox', { name: messages.users.searchLabel })).toBeFocused()
 })

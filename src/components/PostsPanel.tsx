@@ -1,4 +1,4 @@
-import { startTransition, useOptimistic, type Ref } from 'react'
+import { startTransition, useOptimistic, useRef, type RefObject } from 'react'
 import { createPost } from '../api/posts'
 import { useCreatedPosts } from '../hooks/useCreatedPosts'
 import { useUserPosts } from '../hooks/useUserPosts'
@@ -13,7 +13,7 @@ import { PostList } from './PostList'
 
 interface PostsPanelProps {
   user: User
-  headingRef?: Ref<HTMLHeadingElement>
+  headingRef?: RefObject<HTMLHeadingElement | null>
 }
 
 /**
@@ -29,6 +29,9 @@ interface PostsPanelProps {
 export function PostsPanel({ user, headingRef }: PostsPanelProps) {
   const apiPosts = useUserPosts(user.id)
   const { createdPosts, saveCreatedPost } = useCreatedPosts(user.id)
+  // The heading also takes focus here, so the panel needs a ref even without one from App.
+  const ownHeadingRef = useRef<HTMLHeadingElement>(null)
+  const heading = headingRef ?? ownHeadingRef
   const [visibleCreated, addPendingPost] = useOptimistic(
     createdPosts,
     (current: DisplayPost[], pending: DisplayPost) => [pending, ...current],
@@ -48,6 +51,13 @@ export function PostsPanel({ user, headingRef }: PostsPanelProps) {
     })
   }
 
+  // Try again goes away with the error, so focus moves to the panel heading
+  // instead of dropping to <body>.
+  function handleRetry() {
+    apiPosts.retry()
+    heading.current?.focus()
+  }
+
   const shownPosts = [
     ...visibleCreated,
     ...(apiPosts.status === 'success' ? apiPosts.data : []),
@@ -64,7 +74,7 @@ export function PostsPanel({ user, headingRef }: PostsPanelProps) {
           {getInitials(user.name)}
         </span>
         <div className="min-w-0">
-          <h2 ref={headingRef} tabIndex={-1} className="font-serif text-2xl font-semibold">
+          <h2 ref={heading} tabIndex={-1} className="font-serif text-2xl font-semibold">
             {user.name}
           </h2>
           {/* An email has no spaces: it may break anywhere rather than widen the page. */}
@@ -83,7 +93,7 @@ export function PostsPanel({ user, headingRef }: PostsPanelProps) {
           <LoadingMessage>{messages.posts.loading}</LoadingMessage>
         )}
         {apiPosts.status === 'error' && (
-          <ErrorMessage onRetry={apiPosts.retry}>{messages.posts.loadError}</ErrorMessage>
+          <ErrorMessage onRetry={handleRetry}>{messages.posts.loadError}</ErrorMessage>
         )}
       </div>
     </section>
