@@ -57,6 +57,22 @@ describe('PostForm', () => {
     expect(title).toHaveValue('')
     expect(body).toHaveValue('')
     expect(title).not.toHaveAttribute('aria-invalid', 'true')
+
+    // A second success must change the live region too, or screen readers stay silent.
+    const status = screen.getByRole('status')
+    const changes: MutationRecord[] = []
+    const observer = new MutationObserver((records) => changes.push(...records))
+    observer.observe(status, { childList: true, subtree: true, characterData: true })
+    await user.type(title, 'Again')
+    await user.type(body, 'Twice')
+    await user.click(screen.getByRole('button', { name: messages.form.submit }))
+    await waitFor(() => {
+      expect(title).toHaveValue('')
+    })
+    observer.disconnect()
+    expect(onPublish).toHaveBeenCalledTimes(2)
+    expect(changes.length).toBeGreaterThan(0)
+    expect(status).toHaveTextContent(messages.form.published)
   })
 
   it('keeps what was typed and shows an error when publishing fails', async () => {

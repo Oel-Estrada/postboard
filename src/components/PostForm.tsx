@@ -13,6 +13,8 @@ interface PostFormState {
   /** What the fields show after the action: React resets the form to these defaults. */
   submitted: PostFormValues
   published: boolean
+  /** Successful publishes so far: keys the announcement so each one is new to screen readers. */
+  publishCount: number
 }
 
 const labelClass = 'mb-1 block text-sm font-medium'
@@ -22,7 +24,12 @@ const fieldClass =
 const fieldErrorClass = 'mt-1 text-sm text-danger'
 
 const emptyValues: PostFormValues = { title: '', body: '' }
-const initialState: PostFormState = { errors: {}, submitted: emptyValues, published: false }
+const initialState: PostFormState = {
+  errors: {},
+  submitted: emptyValues,
+  published: false,
+  publishCount: 0,
+}
 
 /**
  * Form to publish a new post, built on a React form action (`useActionState`).
@@ -41,21 +48,30 @@ export function PostForm({ onPublish }: PostFormProps) {
   const titleId = `${id}-title`
   const bodyId = `${id}-body`
 
-  async function publishAction(_previous: PostFormState, formData: FormData) {
+  async function publishAction(
+    previous: PostFormState,
+    formData: FormData,
+  ): Promise<PostFormState> {
     const typed: PostFormValues = {
       title: String(formData.get('title') ?? ''),
       body: String(formData.get('body') ?? ''),
     }
+    const { publishCount } = previous
     const errors = validatePost(typed)
     if (Object.keys(errors).length > 0) {
-      return { errors, submitted: typed, published: false }
+      return { errors, submitted: typed, published: false, publishCount }
     }
 
     try {
       await onPublish({ title: typed.title.trim(), body: typed.body.trim() })
-      return { errors: {}, submitted: emptyValues, published: true }
+      return { errors: {}, submitted: emptyValues, published: true, publishCount: publishCount + 1 }
     } catch {
-      return { errors: { form: messages.form.publishError }, submitted: typed, published: false }
+      return {
+        errors: { form: messages.form.publishError },
+        submitted: typed,
+        published: false,
+        publishCount,
+      }
     }
   }
 
@@ -122,11 +138,13 @@ export function PostForm({ onPublish }: PostFormProps) {
       {/* The status sits beside the button; it goes after it on screen, not in the DOM. */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         {/* Always rendered: a live region whose text changes is announced reliably.
-            It stays until the next submit: it never disappears on a timer (WCAG 2.2.1). */}
+            It stays until the next submit: it never disappears on a timer (WCAG 2.2.1).
+            The key gives each success a new node: the same text twice would leave the
+            region untouched, and screen readers would not announce the second one. */}
         {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role */}
-        <p role="status" className="order-last flex items-center gap-1.5 text-sm font-medium text-success">
+        <p role="status" className="order-last text-sm font-medium text-success">
           {state.published ? (
-            <>
+            <span key={state.publishCount} className="flex items-center gap-1.5">
               <svg
                 aria-hidden="true"
                 viewBox="0 0 16 16"
@@ -140,7 +158,7 @@ export function PostForm({ onPublish }: PostFormProps) {
                 <path d="M3 8.5 6.5 12 13 4.5" />
               </svg>
               {messages.form.published}
-            </>
+            </span>
           ) : null}
         </p>
         <SubmitButton />
