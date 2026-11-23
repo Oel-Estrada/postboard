@@ -517,3 +517,228 @@ Se leyeron `accessibility`, `forms`, `css-layout`, `css`, `responsive-design` y
 - **«Back to users» puede perder el foco:** si el usuario elegido ya no está en la lista
   filtrada (se elige en escritorio, se filtra y se estrecha la ventana), el foco cae en `body`.
   Va a «qué haría con más tiempo».
+
+## P6 — Posts, formulario y persistencia
+
+**Fecha:** 2026-11-23 15:50 (UTC+03:00)
+
+**Duración:** 15:50–18:32 (≈162 min)
+
+**Qué pedí:** ejecutar solo la fase P6 del plan (P6.1 a P6.9 y su cierre) con
+`superpowers:executing-plans`, en la misma sesión y sin subagentes, y con
+`superpowers:test-driven-development`:
+
+- Por cada pieza, el test en rojo sin tocar la red real, el código mínimo, el refactor y un
+  commit solo con sus archivos. Si el rojo era solo «falta el módulo», mutaciones juzgadas por
+  el código de salida de `pnpm test`, no solo por la línea `Tests`, restaurando siempre desde
+  copias.
+- Solo los tests del plan, y los textos solo desde `messages`, con la aserción literal de
+  `postsCount` en `messages.test.ts`. `PostEntry` y `postEntrySchema` entran en P6.2.
+- El test de cambio de usuario de `useUserPosts` tiene que detectar la mutación de P4.3
+  (`userId` escrito a mano en `getPostsByUser`). «Publishing…» se busca siempre acotado.
+- Antes del formulario, consultar modern-web-guidance y Context7 (`useActionState`,
+  `useFormStatus` y `useOptimistic`).
+- Paradas: las piezas unitarias se commitean sin esperar si las cuatro puertas pasan y las
+  mutaciones mueren; si no, parar. Parar siempre antes de P6.6, P6.8 y P6.9 (con `pnpm dev`).
+
+Durante la fase fui ajustando con varios mensajes (todos literales en `docs/prompts.md`): los
+tests ampliados de P6.2 y P6.4, el `testTimeout` y la medición en frío, el doble clic, las
+regiones `status` acotadas, la causa del bug de P6.8 y el foco con `useLayoutEffect`.
+
+**Qué propuso la IA:**
+
+- **Mutaciones en cada pieza.** Las que sobrevivían pararon el trabajo con una propuesta ya
+  comprobada (aserciones nuevas dentro de los tests del plan, sin tests nuevos):
+  - **P6.2 `useUserPosts`:** quitar la comprobación de `signal.aborted` en la rama de error
+    sobrevivía: al cambiar de usuario se veía un instante «error». El test de cambio de usuario
+    retiene también la respuesta de Ervin (dos compuertas, como en P5.2), guarda cada estado y
+    comprueba que nunca pasa por `error`. Muere 3 de 3. La mutación de P4.3 ya moría: el test
+    se queda esperando los posts de Ervin.
+  - **P6.4 `useCreatedPosts`:** escribir en el storage *dentro* del updater de
+    `setCreatedPosts` sobrevivía. El test publica **dos** posts tras desmontar (ver «eager
+    state» en «Desviaciones»). Muere 3 de 3.
+  - **P6.8 `PostsPanel`:** una `key` nueva al guardar sobrevivía; se cubrió primero con un
+    `MutationObserver` y después con la aserción del mismo nodo (ver abajo).
+- **Medición del arranque en frío** (a petición mía, unos 3 minutos y sin tocar el repo): por
+  qué la primera petición de cada archivo tardaba 1–2,5 s.
+
+  | | Aislado (3 veces) | En la suite completa (3 veces) |
+  | --- | --- | --- |
+  | Primer fetch con MSW | 49–80 ms (el segundo, 10–13) | 87–709 ms (el segundo, 14–98) |
+  | Primer parse de zod | 2,9–4,3 ms (el segundo, 0,1) | 5,6–27,5 ms |
+  | Primer render en jsdom (síncrono) | 31–59 ms (el segundo, 3–4) | 50–343 ms |
+  | Del render a ver los usuarios | 130–172 ms | 216–716 ms |
+
+  Ninguna pieza lo explica sola y zod no influye: aislado, todo suma menos de 0,2 s. En la suite
+  completa todo va entre 2 y 14 veces más lento, porque 18 archivos, cada uno con su worker y su
+  jsdom, compiten por la CPU («setup» y «environment» son el 70–80 % del tiempo total).
+- **`testTimeout: 15000`** (commit propio): en P5 subimos `asyncUtilTimeout` a 5000 ms, pero el
+  límite de cada test también era 5000 ms, así que un `findBy` podía gastarse todo el tiempo
+  del test. Con la máquina cargada, el test de móvil de `App` falló 4 de 6 veces.
+- **Diagnósticos con tests temporales** (borrados después) para encontrar la causa de cada
+  fallo antes de tocar nada: el «FirstSecond» de P6.8, el foco de P6.6 y la sonda en frío.
+- **Verificación de la fase:** los cuatro comandos en `HEAD` y en cada commit de la fase por
+  separado, en un worktree temporal que se borró al acabar.
+
+**Qué acepté:**
+
+- Las aserciones nuevas de P6.2, P6.4, P6.6 y P6.8, siempre dentro de los tests del plan.
+- `testTimeout: 15000`, tras 10 ejecuciones seguidas de la suite completa en verde.
+- En P6.6, el foco al primer campo con error tras un envío no válido (lo recomienda la guía
+  `forms`), comprobado dentro del primer test.
+- En P6.8: el `user.clear()` del helper, el `MutationObserver`, la aserción del mismo nodo, y
+  las del `h2`, el email, la empresa y que no salga «This user has no posts yet.» mientras carga.
+- Que el hook `useUserPosts` no vuelva a `loading` al cambiar `userId` (ver «Desviaciones»).
+- Los dos comentarios que desactivan reglas de Oxlint en una línea, como en P5:
+  `prefer-tag-over-role` en el `<p role="status">` de `PostForm` y `no-redundant-roles` en el
+  `<ul role="list">` de `PostList`.
+
+**Qué corregí o rechacé (y por qué):**
+
+1. **Arreglar la causa del bug de P6.8, no el síntoma.**
+   - **Qué pasaba:** el post recién publicado salía dos veces con la misma `key` (el pendiente y
+     el ya guardado), React reconciliaba mal el DOM y el test de los dos posts con `id: 101` lo
+     detectó.
+   - **Causa:** `saveCreatedPost` actualizaba el estado después del `await`, y React no marca
+     como Transition las actualizaciones que van después de un `await` dentro de una action
+     (documentación de React, `useTransition` → «React doesn't treat my state update after
+     await as a Transition»; lo confirmé en Context7). El post guardado se pintaba mientras
+     `useOptimistic` aún mostraba el pendiente.
+   - **La IA propuso** filtrar en el reducer de `useOptimistic` la entrada con la misma `key`.
+     Funcionaba, pero tapaba el síntoma.
+   - **Arreglo:** `startTransition(() => saveCreatedPost(...))` en `PostsPanel`, con
+     `startTransition` importado de `react` y un comentario. Así el post guardado y la retirada
+     del optimista llegan en el mismo render.
+   - **El filtro se quitó:** con `startTransition`, el `MutationObserver` ve como mucho un
+     «Hello» (5 de 5) y la mutación «sin startTransition» muere 3 de 3.
+2. **La aserción del mismo nodo.** Con `startTransition`, una `key` nueva al guardar ya no se
+   ve duplicada: solo hace que React sustituya el `article` en vez de actualizarlo. El test 1
+   comprueba que el `article` pendiente es el mismo nodo que queda publicado (el `aria-busy` se
+   apaga en el mismo elemento). Muere 3 de 3.
+3. **El test del doble clic del plan habría pasado siempre.** Usaba una promesa que nunca
+   resuelve, pero `useActionState` encola las acciones: un segundo envío solo se ejecutaría al
+   terminar el primero, y con esa promesa no se vería nunca. El test suelta la promesa tras el
+   doble clic, espera «Post published.» y comprueba una sola llamada. Resultado: el segundo
+   clic no llega a encolarse porque `useFormStatus` desactiva el botón a tiempo, así que no hizo
+   falta la guarda en `onSubmit`. Con el botón que nunca se desactiva, `onPublish` se llama dos
+   veces y el test falla.
+4. **El fallo intermitente del foco** (commit `fix: move focus to the first invalid field with
+   the errors`).
+   - **Qué pasaba:** en la verificación final, «shows accessible errors…» falló 1 de 10 veces en
+     `HEAD`: el foco estaba en `body`, no en el título.
+   - **Causa:** el foco se movía en un `useEffect`, y React puede ejecutar los efectos pasivos
+     después del commit que pinta las alertas. Mientras tanto el foco estaba en `body`, porque
+     el botón se había desactivado durante la action. Un test temporal con un
+     `MutationObserver` lo demostró: con `useEffect`, cuando aparecían las alertas el foco
+     estaba en `body` o en el botón (3 de 3); con `useLayoutEffect`, en el título (3 de 3).
+   - **Por qué `useLayoutEffect` y no `waitFor`:** esperar al foco en el test habría arreglado
+     el síntoma y dejado ese instante con el foco perdido, también para un lector de pantalla.
+     Un efecto de layout se ejecuta dentro del mismo commit que inserta las alertas, así que
+     nadie puede verlas sin que el foco ya esté en el campo.
+   - Después, 10 ejecuciones seguidas de la suite completa en verde y la mutación del foco
+     sigue muriendo.
+5. **Las dos regiones `role="status"`** (la del formulario, siempre presente, y la de «Loading
+   posts…») se buscan acotadas: por su texto o con `within`, nunca con `getByRole('status')`
+   global.
+
+**Context7 (React):**
+
+- **`useActionState`:** cuando la action termina sin lanzar, React vacía los campos no
+  controlados. Con `defaultValue` tomado del estado, lo escrito se conserva si la validación o
+  la publicación fallan, y se vacía si todo va bien.
+- **`useFormStatus`:** tiene que llamarse desde un componente dentro del `<form>`
+  (`SubmitButton`).
+- **`useOptimistic`:** dentro de una action se puede llamar sin `startTransition`, y el valor
+  optimista dura hasta que termina la action.
+- **`startTransition` después de un `await`:** ver la corrección 1.
+
+**Guías de modern-web-guidance:** se hicieron las cuatro búsquedas del plan («form validation
+error messages», «accessible form errors», «required form fields» y «prevent duplicate form
+submission») y se leyeron `forms`, `required-field-feedback` y `accessible-error-announcement`.
+Influyeron así:
+
+- **`forms`:**
+  - Cada campo con `name`, `<textarea>` para el texto y `required` junto con `noValidate`.
+  - El foco al primer campo con error tras un envío fallido.
+  - Desactivar el botón solo *después* de un envío válido, para evitar el doble envío. Ya lo
+    hace `useFormStatus`: un envío no válido termina enseguida.
+  - Sin desactivar la corrección automática: título y texto son prosa.
+- **`required-field-feedback`:** `aria-describedby` solo mientras hay error, porque el texto
+  enlazado se lee aunque esté oculto.
+- **`accessible-error-announcement`:** «Post published.» va en un `role="status"` que se pinta
+  siempre y solo cambia de texto, porque una región viva que aparece de golpe no siempre se
+  anuncia.
+- **Conflicto con CLAUDE.md:** la guía desaconseja que cada error sea una región viva. Manda
+  CLAUDE.md, así que los errores siguen con `role="alert"`.
+- La guía pide un indicador visual de campo obligatorio y estilos con `:user-invalid`. Es
+  diseño y va en P7.
+
+**Desviaciones del plan:**
+
+- **Aserciones nuevas dentro de los tests del plan** (ningún test nuevo):
+  - P6.2: la compuerta de Ervin y el historial de estados.
+  - P6.4: dos posts tras desmontar.
+  - P6.6: el foco y el doble clic que suelta la promesa.
+  - P6.8: el `MutationObserver`, el mismo nodo, la cabecera y que no salga «no posts» mientras
+    carga.
+- **La premisa del plan sobre los updaters era cierta solo a medias (P6.4).** El plan decía que
+  React no ejecuta los updaters de un componente desmontado. Si el hook no tiene
+  actualizaciones pendientes, React ejecuta el updater al momento (el «eager state»), aunque el
+  componente ya no exista; por eso un solo post tras desmontar no distinguía escribir dentro o
+  fuera del updater. Con un segundo post ya hay una actualización pendiente, React no ejecuta el
+  updater y ese post se perdería. Escribir fuera del updater, como dice el plan, sigue siendo lo
+  correcto.
+- **`useUserPosts` no vuelve a `loading` al cambiar `userId`.** En la app no se nota, porque
+  `App` monta `PostsPanel` con `key={user.id}` y cada usuario estrena el hook. Sin esa `key`, se
+  verían un instante los posts del usuario anterior.
+- **`PostsPanel` solo pinta la lista cuando la API responde o hay posts creados,** para que no
+  diga «This user has no posts yet.» mientras carga.
+- **`createdPostsStorage`:** el `try` de la lectura envuelve solo `getItem` y `JSON.parse`, para
+  que quitar `Array.isArray` no lo tape el `catch`.
+- **Dos commits que no estaban en el plan:** `test: give each test more time than its async
+  waits` y `fix: move focus to the first invalid field with the errors`.
+
+**Mutaciones que no cambian el comportamiento** (anotadas; ningún test puede detectarlas):
+
+- **P6.2:** quitar la comprobación de `signal.aborted` en la rama de éxito. Una petición
+  abortada nunca resuelve con éxito; se deja como defensa, igual que en `useUsers`.
+- **P6.3:** quitar la guarda `if (!storage)` de `writeCreatedPosts`. `null.setItem` lanza dentro
+  del `try` y la función devuelve `false` igualmente. TypeScript obliga a mantener la guarda.
+- **P6.8:** guardar con el `userId` de la respuesta. MSW y la API real devuelven el `userId`
+  enviado. El `userId` explícito se queda, como pide el plan.
+- **P6.9:** leer `user.id` después del `await` en vez de capturarlo antes. `handlePublish` se
+  crea en cada render y su `user` es el de ese render, así que es el mismo valor.
+- **P6.7:** `key={post.id}` en `PostList` sobrevivía en sus propios tests, como prevé el plan.
+  Lo mata el test de los dos posts con `id: 101` de P6.8 (comprobado).
+
+**Incidentes:**
+
+- **`user-event` y el reset del formulario (P6.8).** El segundo post de un test se publicaba
+  como «FirstSecond». `user-event` 14.6.13 guarda su propia copia de lo que ha escrito en cada
+  campo, y el `form.reset()` de React no la actualiza. Se confirmó en un test aislado; en un
+  navegador real no pasa. El helper `publish` hace `user.clear()` antes de escribir, con un
+  comentario.
+- **Una carrera en mis propios tests de P6.6:** `findByRole('status')` devolvía la región al
+  momento, porque se pinta siempre vacía, y el texto se comprobaba antes de que llegara.
+  Apareció porque la mutación «sin `h3`» rompía tests que no tenían que ver. Ahora esperan al
+  texto con `waitFor`.
+- **Escapes de Perl en las mutaciones.** Perl interpretó `${titleId}` como una variable suya y
+  una mutación cambió dos cosas a la vez. Se repitió con la sustitución bien escapada.
+- **El servidor de desarrollo no se paró del todo.** Al parar `pnpm dev`, el proceso de Vite
+  siguió escuchando en el 5173. Se cerró a mano y se comprobó que el puerto quedaba libre.
+- **La verificación commit a commit descartó una salida.** En `27ef243` la ejecución usada para
+  contar los tests dio 1 fallo y el script no guardaba la salida. Repetida 8 veces no se
+  reprodujo; en `HEAD` sí (1 de 10), y así se encontró el fallo del foco (corrección 4).
+
+**Menores que quedan anotados** (de la revisión final; van a «qué haría con más tiempo»):
+
+- **Volver al usuario original antes de que responda el `POST`.** El panel nuevo ya leyó el
+  storage y no verá el post hasta el siguiente montaje (límite conocido del plan). Se
+  resolvería con `useSyncExternalStore` sobre un pequeño almacén con suscripción.
+- **«Posts (0)» mientras cargan los posts de la API.**
+- **Tras un error al publicar** (no de validación), el foco queda en `body`, porque el botón se
+  desactivó durante la action.
+- **«Post published.» sigue visible** mientras se escribe el siguiente post.
+- **El arranque en frío de los tests.** Medir con `maxWorkers` limitado, con `isolate: false`
+  (Vitest dice que ahorraría ~1,7 s por archivo) o con un entorno más ligero que jsdom, en vez
+  de seguir subiendo tiempos de espera.

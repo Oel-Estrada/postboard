@@ -762,3 +762,164 @@ OK al commit de cierre de P5. Asegúrate de que AI_LOG recoge también los dos m
 fuera del filtro, que va a "qué haría con más tiempo"). Después del commit, para el servidor
 de desarrollo.
 ```
+
+## P6 — Posts, formulario y persistencia
+
+**Fecha:** 2026-11-23 15:50 (UTC+03:00)
+
+```text
+Antes de nada: añade al final de docs/prompts.md una sección "## P6 — Posts, formulario y
+persistencia" con la fecha y la hora y este prompt COMPLETO y LITERAL, dentro de un bloque de
+código, sin resumirlo ni corregirlo. Igual que en fases anteriores, añade también, literal y
+con su hora, cada mensaje que te mande durante la fase. Todo eso va en el commit de docs que
+cierra la fase, con AI_LOG.md. Respóndeme en español.
+
+No uses brainstorming ni writing-plans: el plan ya está aprobado en docs/plan.md.
+
+Lee CLAUDE.md y docs/plan.md. Ejecuta SOLO la fase P6 (P6.1 a P6.9 y su cierre) con
+superpowers:executing-plans (en esta misma sesión, sin subagentes) y
+superpowers:test-driven-development: por cada pieza, primero el test en rojo (sin tocar la red
+real), luego el código mínimo, luego refactor. Un commit por pieza, con su test y solo con los
+archivos de la pieza. Si el rojo es solo "falta el módulo", comprueba con mutaciones que cada
+test falla por su propio motivo; restaura siempre desde copias (nunca git checkout) y juzga
+cada mutación por el código de salida de pnpm test, no solo por la línea "Tests".
+Tests: los del plan (pirámide; no añadas otros sin decírmelo; los de integración en
+*.integration.test.tsx). Textos solo desde src/i18n/messages.ts, y cada función nueva de
+messages (postsCount) con su aserción literal en messages.test.ts. PostEntry y postEntrySchema
+entran en P6.2, su primer uso. El test de cambio de usuario de useUserPosts (P6.2) tiene que
+detectar la mutación de P4.3 (userId escrito a mano en getPostsByUser): compruébalo. Como
+"Publishing…" sale a la vez en el botón y en el post pendiente, búscalo acotado (por el rol
+del botón o con within de la lista), nunca con getByText global.
+Antes de escribir el formulario, consulta la skill modern-web-guidance con las búsquedas que
+indica el plan para esta fase, y en Context7 useActionState (reset y defaultValue),
+useFormStatus y useOptimistic. Anota en AI_LOG qué influyó y en qué.
+Paradas: en las piezas unitarias (P6.1–P6.5 y P6.7), si los cuatro comandos pasan y las
+mutaciones fallan donde deben, haz el commit sin esperarme; si alguna mutación sobrevive o
+algo falla, para. Para siempre antes del commit de P6.6 (PostForm), de P6.8 (PostsPanel) y de
+P6.9 (App); en P6.9 levanta además `pnpm dev` en segundo plano y dame la URL para revisarlo en
+el navegador. En cada parada, enséñame el rojo, las mutaciones y la salida real de pnpm test,
+typecheck, lint y build.
+Termina con superpowers:verification-before-completion. Al cerrar la fase, actualiza AI_LOG.md
+(con la línea **Duración:** inicio–fin, con la hora del commit de cierre) y prepara el commit
+de cierre `docs: log p6 prompt and ai decisions`; para antes de hacerlo.
+```
+
+### P6 - OK al test ampliado de useUserPosts
+
+**Fecha:** 2026-11-23 16:05 (UTC+03:00)
+
+```text
+OK al test ampliado y al commit de P6.2. Bien anotar en AI_LOG que el hook no vuelve a
+loading al cambiar userId y que la app lo evita con key={user.id}. Sigue con P6.3 con las
+mismas reglas de paradas.
+```
+
+### P6 - testTimeout, medición del arranque en frío y OK a P6.3
+
+**Fecha:** 2026-11-23 16:19 (UTC+03:00)
+
+```text
+OK, con una condición. El testTimeout se justifica porque ahora es igual que asyncUtilTimeout
+(un findBy puede gastarse todo el tiempo del test). Haz el commit
+`test: give each test more time than its async waits` con testTimeout: 15000 y un comentario
+que lo diga, después de 10 ejecuciones seguidas de la suite completa en verde; si falla
+alguna, para.
+Antes, una medición acotada (10 minutos como mucho, sin cambiar nada): ¿por qué la primera
+petición de cada archivo tarda 1–2,5 s en frío? Mide por separado un fetch con MSW, el primer
+parse de zod y el render inicial en jsdom, y dame los números. Si el siguiente paso fuera
+arreglarlo, no lo hagas ahora: anótalo en AI_LOG para "qué haría con más tiempo".
+P6.3: OK. La guarda `if (!storage)` es una mutación que no cambia el comportamiento; anótalo
+así en AI_LOG. Después, commit de P6.3 y sigue con P6.4 con las mismas reglas de paradas.
+```
+
+### P6 - OK al test de dos posts tras desmontar
+
+**Fecha:** 2026-11-23 16:35 (UTC+03:00)
+
+```text
+OK al test cambiado (dos posts tras desmontar) y al commit de P6.4. Anota en AI_LOG la
+medición en frío y que la premisa del plan sobre los updaters era cierta solo a medias (el
+eager state). Sigue con P6.5 con las mismas reglas de paradas.
+```
+
+### P6 - OK a PostForm y regiones de estado en P6.8
+
+**Fecha:** 2026-11-23 16:55 (UTC+03:00)
+
+```text
+OK al commit de P6.6 con los tres cambios: el test del doble clic que suelta la promesa, el
+foco al primer campo con error y el waitFor en la región de estado. Anota en AI_LOG lo del
+doble clic (la versión del plan habría pasado siempre).
+Para P6.8: habrá dos regiones role="status" a la vez (la del formulario, siempre presente, y
+la de "Loading posts…"). En los tests búscalas acotadas (within del formulario o de la lista,
+o por su texto), nunca con getByRole('status') global.
+Sigue con P6.7 con las mismas reglas de paradas.
+```
+
+### P6 - OK a PostList y comprobación de la clave en P6.8
+
+**Fecha:** 2026-11-23 17:07 (UTC+03:00)
+
+```text
+OK al commit de P6.7, dejando la clave para P6.8. En P6.8 comprueba que el test de dos posts
+con id 101 mata la mutación key={post.id} de PostList. Sigue con P6.8 y para antes de su
+commit.
+```
+
+### P6 - Arreglar la causa con startTransition
+
+**Fecha:** 2026-11-23 17:41 (UTC+03:00)
+
+```text
+Buen hallazgo. Antes del commit, arregla la causa en vez del síntoma: React no marca como
+Transition las actualizaciones que van después de un await dentro de una action (lo dice su
+documentación, en useTransition → "React doesn't treat my state update after await as a
+Transition"). Envuelve la llamada en PostsPanel: startTransition(() => saveCreatedPost(...)),
+con el startTransition independiente de 'react' y un comentario que lo explique. Así el post
+guardado y la retirada del optimista llegan en el mismo render.
+Después, prueba a quitar el filtro por key del reducer de useOptimistic: si el
+MutationObserver sigue viendo como mucho un "Hello" (5 de 5) y la mutación "sin
+startTransition" muere, quítalo. Si no, deja los dos y explícame por qué.
+OK al user.clear() del helper, al MutationObserver y a las aserciones añadidas. Anota en
+AI_LOG el bug, su causa y el arreglo.
+Con eso, haz el commit de P6.8 sin esperarme si las cuatro puertas pasan. Sigue con P6.9 y
+para antes de su commit con `pnpm dev` levantado y la URL.
+```
+
+### P6 - Revisión en el navegador, OK a P6.9 y cierre
+
+**Fecha:** 2026-11-23 17:54 (UTC+03:00)
+
+```text
+He revisado P6.9 en el navegador y funciona. OK a la aserción del mismo nodo en P6.8 y al
+commit de P6.9. Para el servidor de desarrollo (comprueba que el puerto 5173 queda libre).
+Después cierra la fase: verificación final (cada commit de la fase por su cuenta, en un
+worktree temporal que borres al acabar), AI_LOG con todo lo de P6 (el bug de las
+actualizaciones después de un await y startTransition, el filtro que se quitó, el doble clic,
+el eager state de P6.4, la medición en frío y el testTimeout, user.clear(), el
+MutationObserver, la aserción del mismo nodo, las mutaciones equivalentes y lo que influyó de
+modern-web-guidance y de Context7) y prepara el commit `docs: log p6 prompt and ai
+decisions`. Para antes de ese commit.
+```
+
+### P6 - useLayoutEffect para el foco y cierre
+
+**Fecha:** 2026-11-23 18:18 (UTC+03:00)
+
+```text
+OK: haz el commit `fix: move focus to the first invalid field with the errors` con
+useLayoutEffect y un comentario que explique por qué (el foco tiene que llegar en el mismo
+commit que las alertas). Antes, 10 ejecuciones seguidas de la suite completa en verde; si
+falla alguna, para. Anota en AI_LOG el fallo intermitente, su causa y por qué
+useLayoutEffect y no waitFor.
+Después escribe AI_LOG con todo lo de P6, prepara el commit de cierre
+`docs: log p6 prompt and ai decisions` y para antes de hacerlo.
+```
+
+### P6 - OK al cierre
+
+**Fecha:** 2026-11-23 18:32 (UTC+03:00)
+
+```text
+OK al commit de cierre de P6, con la hora real del commit en la Duración.
+```
