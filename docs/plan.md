@@ -182,6 +182,10 @@ Se aplican a todas las piezas y salen de `CLAUDE.md`:
   escriben textos a mano y los tests (unitarios y E2E) los importan de `messages`. Única
   excepción: el `<title>` estático de `index.html`.
 - JSDoc breve en todo lo exportado (API, hooks y componentes).
+- Pirámide de tests (sección 8): muchos unitarios, menos de integración (`*.integration.test.tsx`)
+  y muy pocos E2E. Cada test defiende un comportamiento distinto; nada de variaciones del mismo
+  caso ni de lo trivial. Los errores HTTP, de red y la cancelación se prueban una sola vez, en
+  `request`.
 - Los tests no tocan nunca la red real: MSW con `onUnhandledRequest: 'error'` en Vitest y
   `page.route` con bloqueo de todo lo externo en Playwright.
 - Vitest no ejecuta `e2e/` y Playwright no ejecuta `src/`.
@@ -316,15 +320,18 @@ src/
   api/         client.ts, users.ts, posts.ts                          (+ *.test.ts)
   hooks/       useUsers.ts, useUserPosts.ts, useCreatedPosts.ts       (+ *.test.ts)
   i18n/        messages.ts           (sin test propio: se prueba a través de los componentes)
-  components/  UserSearch, UserList, LoadingMessage, ErrorMessage, UsersPanel,
-               SubmitButton, PostForm, PostList, PostsPanel          (.tsx + .test.tsx)
+  components/  UserSearch, UserList, LoadingMessage, ErrorMessage,
+               SubmitButton, PostList                     (.tsx + .test.tsx: unitarios)
+               UsersPanel, PostForm, PostsPanel           (.tsx + .integration.test.tsx)
   lib/         filterUsersByName.ts, getInitials.ts, breakpoints.ts, isNarrowViewport.ts,
                validatePost.ts, createdPostsStorage.ts                (+ *.test.ts)
   test/        setup.ts, server.ts, server.test.ts, handlers.ts, fixtures.ts
-  types.ts, App.tsx, App.test.tsx, main.tsx, index.css
-e2e/           mockApi.ts, users.spec.ts, posts.spec.ts, persistence.spec.ts,
-               errors.spec.ts, mobile.spec.ts
+  types.ts, App.tsx, App.integration.test.tsx, main.tsx, index.css
+e2e/           mockApi.ts, search.spec.ts, persistence.spec.ts, errors.spec.ts, mobile.spec.ts
 ```
+
+`App.test.tsx` (el test trivial de P3.1) pasa a ser `App.integration.test.tsx` en P5.10, cuando
+`App` empieza a unir piezas; su comprobación del `h1` se integra en el test de esa pieza.
 
 **Datos de prueba** (`src/test/fixtures.ts`, compartidos con los E2E): son datos reales de
 JSONPlaceholder recortados. Hay 4 usuarios: Leanne Graham (1, `@Bret`), Ervin Howell (2,
@@ -339,8 +346,9 @@ simulan en cada test con `server.use(...)`: `new HttpResponse(null, { status: 50
 error HTTP y `HttpResponse.error()` para el error de red.
 
 **Entorno de tests:** `setup.ts` limpia `localStorage` después de cada test (desde P6.3). jsdom
-no tiene `matchMedia`, así que por defecto los tests ven escritorio. Los tests de móvil lo
-simulan con `vi.stubGlobal('matchMedia', …)` y `matches: true`.
+no tiene `matchMedia`, así que por defecto los tests ven escritorio (y todos pasan por el
+fallback de `isNarrowViewport`). Los tests de móvil lo simulan con
+`vi.stubGlobal('matchMedia', …)` y `matches: true`.
 
 ## 6. Ciclo de cada pieza
 
@@ -383,11 +391,56 @@ Cada una tiene un test en la pieza que la resuelve.
      llega a encolarse, se añade un guard en `onSubmit` que haga `preventDefault()` mientras
      haya un envío en curso.
 4. **`localStorage` corrupto, lleno o bloqueado:** la app funciona igual, sin persistencia. Lo
-   cubren `createdPostsStorage`, `useCreatedPosts` y `PostsPanel` («still publishes when
-   storage is unavailable»).
+   cubren `createdPostsStorage` («ignores corrupt data…» y «never throws when storage is
+   blocked or full») y `PostsPanel` («still publishes when storage is unavailable»).
 5. **Fallan los posts pero no los usuarios:** el error sale solo en el detalle, los posts
-   creados siguen visibles y «Try again» lo recupera. Lo cubre `PostsPanel` («shows an error
-   and recovers with Try again»).
+   creados siguen visibles y «Try again» lo recupera. Lo cubre `PostsPanel` («shows a posts
+   error and recovers with Try again, keeping created posts»).
+
+## 8. Pirámide de tests
+
+Presupuesto orientativo: ~30 unitarios, ~10 de integración y 4 E2E. Salen **33 unitarios, 14 de
+integración y 4 E2E (51)**. Pasan un poco del presupuesto porque cada pieza (y cada componente)
+se commitea con al menos un test propio. Esta tabla irá al README.
+
+| Capa | Pieza | Archivo | Tests | Qué defienden |
+| --- | --- | --- | --- | --- |
+| Unitario | P3.3 Servidor MSW | `test/server.test.ts` | 1 | Ningún test toca la red real |
+| Unitario | P4.1 `request` | `api/client.test.ts` | 4 | JSON, error HTTP, error de red y cancelación (una sola vez para toda la API) |
+| Unitario | P4.2 `getUsers` | `api/users.test.ts` | 1 | Ruta y método |
+| Unitario | P4.3 `getPostsByUser` | `api/posts.test.ts` | 1 | Ruta y `userId` |
+| Unitario | P4.4 `createPost` | `api/posts.test.ts` | 1 | Método, cabecera y cuerpo JSON |
+| Unitario | P5.1 `filterUsersByName` | `lib/filterUsersByName.test.ts` | 2 | Búsqueda vacía; mayúsculas y espacios |
+| Unitario | P5.2 `useUsers` | `hooks/useUsers.test.ts` | 3 | Carga → éxito; error → reintento; cancelación al desmontar |
+| Unitario | P5.3 `UserSearch` | `components/UserSearch.test.tsx` | 1 | Label accesible y lo que se escribe |
+| Unitario | P5.4 `getInitials` | `lib/getInitials.test.ts` | 2 | Dos primeras palabras; tratamientos |
+| Unitario | P5.5 `UserList` | `components/UserList.test.tsx` | 1 | Un botón por usuario y el seleccionado marcado |
+| Unitario | P5.6 `LoadingMessage` | `components/LoadingMessage.test.tsx` | 1 | `role="status"` |
+| Unitario | P5.7 `ErrorMessage` | `components/ErrorMessage.test.tsx` | 1 | `role="alert"` y «Try again» |
+| Unitario | P5.9 `isNarrowViewport` | `lib/isNarrowViewport.test.ts` | 1 | Media query del corte `md` |
+| Unitario | P6.1 `validatePost` | `lib/validatePost.test.ts` | 1 | Campos vacíos o solo con espacios |
+| Unitario | P6.2 `useUserPosts` | `hooks/useUserPosts.test.ts` | 3 | Carga → éxito con claves; cambio rápido de usuario (punto 1); error → reintento |
+| Unitario | P6.3 `createdPostsStorage` | `lib/createdPostsStorage.test.ts` | 3 | Clave versionada por usuario; datos corruptos; storage bloqueado o lleno (punto 4) |
+| Unitario | P6.4 `useCreatedPosts` | `hooks/useCreatedPosts.test.ts` | 2 | Lee y guarda; escribe con su `userId` tras desmontar |
+| Unitario | P6.5 `SubmitButton` | `components/SubmitButton.test.tsx` | 1 | Estado pendiente con `useFormStatus` |
+| Unitario | P6.7 `PostList` | `components/PostList.test.tsx` | 3 | XSS como texto; post pendiente; lista vacía |
+| **Unitarios** | | | **33** | |
+| Integración | P5.8 `UsersPanel` | `components/UsersPanel.integration.test.tsx` | 2 | Carga → usuarios; búsqueda y «sin resultados» |
+| Integración | P5.10 `App` (layout) | `App.integration.test.tsx` | 1 | Lista → detalle → lista con el foco en móvil |
+| Integración | P5.11 `App` (`<title>`) | `App.integration.test.tsx` | 1 | Título de la página por usuario |
+| Integración | P6.6 `PostForm` | `components/PostForm.integration.test.tsx` | 4 | Validación accesible; éxito; fallo sin perder lo escrito; doble clic (punto 3) |
+| Integración | P6.8 `PostsPanel` | `components/PostsPanel.integration.test.tsx` | 5 | Optimista; marcha atrás si falla el POST; `id: 101` repetido (punto 2); error de posts (punto 5); storage caído (punto 4) |
+| Integración | P6.9 `App` (posts) | `App.integration.test.tsx` | 1 | Cambio de usuario con un POST pendiente |
+| **Integración** | | | **14** | |
+| E2E | P8.1 Búsqueda | `e2e/search.spec.ts` | 1 | Buscar un usuario y abrir sus posts |
+| E2E | P8.2 Persistencia | `e2e/persistence.spec.ts` | 1 | Crear un post y que siga tras recargar |
+| E2E | P8.3 Errores | `e2e/errors.spec.ts` | 1 | Error de la API y «Try again» lo recupera |
+| E2E | P8.4 Móvil | `e2e/mobile.spec.ts` | 1 | 320px: lista → detalle → «Back to users», sin scroll horizontal |
+| **E2E** | | | **4** | |
+| **Total** | | | **51** | |
+
+El test trivial de `App` de P3.1 no cuenta: en P5.10 se convierte en el test de integración del
+layout.
 
 ---
 
@@ -491,21 +544,18 @@ Cada una tiene un test en la pieza que la resuelve.
 - **Archivos:** `src/types.ts` (`User`, `AsyncState`), `src/api/users.ts`,
   `src/api/users.test.ts`, `src/test/fixtures.ts` (`users`) y `src/test/handlers.ts`
   (`GET /users`).
-- **Tests:**
-  - `it('returns the users from GET /users')`: igual a `users`.
-  - `it('throws an HttpError when the API answers 500')`
-  - `it('rejects when the network fails')`
+- **Test** (los errores ya los cubre `request`):
+  - `it('requests GET /users and returns the users')`: el handler comprueba el método y la ruta,
+    y el resultado es igual a `users`.
 - [ ] **Commit:** `feat(api): add getUsers`
 
 ### P4.3 `getPostsByUser`
 
 - **Archivos:** `src/types.ts` (`Post`, `PostEntry`), `src/api/posts.ts`,
   `src/api/posts.test.ts`, `fixtures.ts` (`posts`) y `handlers.ts` (`GET /posts`).
-- **Tests:**
-  - `it('requests the posts of the given user')`: el handler recibe `userId=1` y el resultado
-    son los 2 posts de Leanne.
-  - `it('throws an HttpError when the API answers 404')`
-  - `it('rejects when the network fails')`
+- **Test** (los errores ya los cubre `request`):
+  - `it('requests GET /posts filtered by userId')`: el handler recibe `GET /posts?userId=1` y el
+    resultado son los 2 posts de Leanne.
 - [ ] **Commit:** `feat(api): add getPostsByUser`
 
 ### P4.4 `createPost`
@@ -514,11 +564,10 @@ Cada una tiene un test en la pieza que la resuelve.
   `handlers.ts` (`POST /posts`).
 - **Firma:** `POST /posts` con `body: JSON.stringify(input)` y
   `headers: { 'Content-Type': 'application/json; charset=UTF-8' }`.
-- **Tests:**
-  - `it('sends the new post as JSON and returns the created post')`: el handler recibe
-    `{ userId: 1, title, body }` y el resultado tiene `id: 101`.
-  - `it('throws an HttpError when the API answers 500')`
-  - `it('rejects when the network fails')`
+- **Test** (los errores ya los cubre `request`):
+  - `it('sends a POST /posts with the new post as JSON')`: el handler comprueba el método, la
+    cabecera `Content-Type` y el cuerpo `{ userId: 1, title, body }`; el resultado tiene
+    `id: 101`.
 - [ ] **Commit:** `feat(api): add createPost`
 
 ### Cierre de P4
@@ -540,11 +589,8 @@ Cada una tiene un test en la pieza que la resuelve.
   `includes`. Si la búsqueda está vacía, devuelve todos.
 - **Tests:**
   - `it('returns every user when the query is empty or only spaces')`: con `''` y `'   '`.
-  - `it('matches regardless of case')`: `'LEANNE'` → Leanne Graham.
-  - `it('ignores leading and trailing spaces')`: `'  clem  '` → Clementine y Clementina.
-  - `it('matches a full name with an inner space')`: `'leanne graham'`.
-  - `it('returns an empty list when nothing matches')`
-  - `it('does not match by username')`: `'Bret'` → `[]`.
+  - `it('matches names ignoring case and surrounding spaces')`: `'  CLEM  '` → Clementine y
+    Clementina.
 - [ ] **Commit:** `feat: add case-insensitive user name filter`
 
 ### P5.2 `useUsers`
@@ -554,14 +600,12 @@ Cada una tiene un test en la pieza que la resuelve.
   la señal está abortada, ignora el resultado. `retry()` vuelve a `loading` y repite la
   petición.
 - **Tests** (`renderHook` + MSW):
-  - `it('starts in the loading state')`
-  - `it('returns the users on success')`
-  - `it('returns an error when the API answers 500')`
-  - `it('returns an error when the network fails')`
+  - `it('returns the users after a loading state')`: empieza en `loading` y acaba en
+    `success`.
+  - `it('returns an error and fetches again on retry')`: primero 500 (`{ once: true }`) →
+    `error`; tras `retry()`, `success`.
   - `it('aborts the request on unmount')`: el handler guarda `request.signal`; tras `unmount()`,
     `signal.aborted === true`.
-  - `it('fetches again on retry after an error')`: primero 500 (`{ once: true }`); tras
-    `retry()`, `success`.
 - [ ] **Commit:** `feat: add useUsers hook with abort on unmount`
 
 ### P5.3 `UserSearch`
@@ -570,10 +614,10 @@ Cada una tiene un test en la pieza que la resuelve.
 - **Props:** `{ value: string; onChange: (value: string) => void }`. Es un `input type="search"`
   con `<label>` `messages.users.searchLabel`.
 - **Textos:** `users.searchLabel`.
-- **Tests:**
-  - `it('has a visible search label')`:
-    `getByRole('searchbox', { name: messages.users.searchLabel })`.
-  - `it('reports what the user types')`: `user.type` llama a `onChange` con cada valor.
+- **Test:**
+  - `it('is a labelled search box that reports what the user types')`: lo encuentra
+    `getByRole('searchbox', { name: messages.users.searchLabel })` y `user.type` llama a
+    `onChange`.
 - [ ] **Commit:** `feat: add UserSearch component`
 
 ### P5.4 `getInitials`
@@ -582,10 +626,9 @@ Cada una tiene un test en la pieza que la resuelve.
 - **Comportamiento:** descarta las palabras que terminan en `.` (tratamientos como Mrs.) y toma
   la primera letra de las dos primeras palabras que quedan, en mayúsculas.
 - **Tests:**
-  - `it('takes the first letter of the first two words')`: `'Leanne Graham'` → `'LG'`.
+  - `it('takes the first letter of the first two words')`: `'Leanne Graham'` → `'LG'` y
+    `'Nicholas Runolfsdottir V'` → `'NR'`.
   - `it('skips honorifics')`: `'Mrs. Dennis Schulist'` → `'DS'`.
-  - `it('ignores trailing suffixes')`: `'Nicholas Runolfsdottir V'` → `'NR'`.
-  - `it('handles a single word')`: `'Bret'` → `'B'`.
 - [ ] **Commit:** `feat: add getInitials helper`
 
 ### P5.5 `UserList`
@@ -596,11 +639,10 @@ Cada una tiene un test en la pieza que la resuelve.
   (`aria-hidden`), el nombre y `messages.users.usernameHandle(username)` (`@username`). El
   seleccionado lleva `aria-current="true"`.
 - **Textos:** `users.usernameHandle`.
-- **Tests:**
-  - `it('renders a button per user with name and username')`
-  - `it('marks the selected user as current')`: `getByRole('button', { current: true })`
-    contiene «Leanne Graham».
-  - `it('calls onSelect with the clicked user')`
+- **Test** (el clic se prueba en la integración de `App`):
+  - `it('renders a button per user and marks the selected one as current')`: un botón por
+    usuario con su `usernameHandle`, y `getByRole('button', { current: true })` contiene
+    «Leanne Graham».
 - [ ] **Commit:** `feat: add UserList component`
 
 ### P5.6 `LoadingMessage`
@@ -615,28 +657,25 @@ Cada una tiene un test en la pieza que la resuelve.
 ### P5.7 `ErrorMessage`
 
 - **Archivos:** `src/components/ErrorMessage.tsx` y `.test.tsx`.
-- **Props:** `{ children: ReactNode; onRetry?: () => void }`. Es un contenedor con
-  `role="alert"`; si hay `onRetry`, lleva un botón `messages.common.tryAgain`.
+- **Props:** `{ children: ReactNode; onRetry: () => void }`. Es un contenedor con
+  `role="alert"` y un botón `messages.common.tryAgain`. `onRetry` es obligatorio: los dos
+  errores de carga se pueden reintentar, y el error al publicar lo pinta `PostForm`.
 - **Textos:** `common.tryAgain`.
-- **Tests:**
-  - `it('announces the message as an alert')`
-  - `it('calls onRetry when Try again is clicked')`
-  - `it('hides Try again when there is no onRetry')`
+- **Test:**
+  - `it('announces the message as an alert and retries from Try again')`
 - [ ] **Commit:** `feat: add ErrorMessage component`
 
 ### P5.8 `UsersPanel`
 
-- **Archivos:** `src/components/UsersPanel.tsx` y `.test.tsx`.
+- **Archivos:** `src/components/UsersPanel.tsx` y `.integration.test.tsx`.
 - **Props:** las de la sección 4. Une `useUsers`, `UserSearch`, `filterUsersByName`,
   `UserList`, `LoadingMessage` y `ErrorMessage`. El texto de la búsqueda es estado local.
 - **Textos:** `users.loading`, `users.loadError` y `users.noUsersMatch`.
-- **Tests** (MSW):
+- **Tests de integración** (MSW; el error con «Try again» lo cubren `ErrorMessage`, `useUsers`
+  y el E2E de errores):
   - `it('shows a loading status and then the users')`
-  - `it('filters users as the user types')`: escribir `'  CLEM'` deja 2 botones.
-  - `it('shows a no-match message')`: `'zzz'` → `messages.users.noUsersMatch('zzz')`.
-  - `it('shows an error and recovers with Try again')`: primero 500 → alerta
-    `messages.users.loadError`; tras clic en `messages.common.tryAgain`, la lista.
-  - `it('calls onSelectUser with the clicked user')`
+  - `it('filters the users as the user types and says when none match')`: `'  CLEM'` deja 2
+    botones y `'zzz'` muestra `messages.users.noUsersMatch('zzz')`.
 - [ ] **Commit:** `feat: add UsersPanel with search, loading and error states`
 
 ### P5.9 `isNarrowViewport`
@@ -649,17 +688,15 @@ Cada una tiene un test en la pieza que la resuelve.
   - Devuelve `window.matchMedia(NARROW_VIEWPORT_QUERY).matches`. Si `matchMedia` no existe,
     devuelve `false`.
   - La sintaxis de rangos en media queries se confirma con modern-web-guidance.
-- **Tests:**
-  - `it('queries the viewport below the md breakpoint')`: `matchMedia` recibe
-    `NARROW_VIEWPORT_QUERY`, que es `'(width < 48rem)'`.
-  - `it('is true when the narrow media query matches')`
-  - `it('is false when it does not match')`
-  - `it('is false when matchMedia is not available')`
+- **Test** (el fallback sin `matchMedia` lo recorren todos los tests en jsdom):
+  - `it('is true when the viewport is below the md breakpoint')`: `matchMedia` recibe
+    `NARROW_VIEWPORT_QUERY`, que es `'(width < 48rem)'`, y su `matches` se devuelve.
 - [ ] **Commit:** `feat: add isNarrowViewport helper`
 
 ### P5.10 `App`: layout mobile-first
 
-- **Archivos:** `src/App.tsx` y `src/App.test.tsx`.
+- **Archivos:** `src/App.tsx` y `src/App.integration.test.tsx` (sustituye a `App.test.tsx` con
+  `git mv`).
 - **Comportamiento:**
   - **Estado:** `selectedUser: User | null` y `mobileView: 'list' | 'detail'`.
   - **Base (móvil):** se muestra solo la vista activa (la otra con `hidden`). En `detail` hay
@@ -675,21 +712,19 @@ Cada una tiene un test en la pieza que la resuelve.
   - **Textos:** `app.selectUser` y `app.backToUsers`.
   - Que cada vista se oculte de verdad solo se puede comprobar con CSS real. Lo comprueba el
     E2E móvil de P8; aquí se prueba el comportamiento.
-- **Tests:** se mantiene el del encabezado y se añaden:
-  - `it('asks to select a user before showing posts')`
-  - `it('shows the selected user in the detail area')`: clic en «Ervin Howell» → `heading`
-    «Ervin Howell».
-  - `it('moves focus to the detail heading on a narrow viewport')`: con `matchMedia` simulado
-    (`matches: true`).
-  - `it('keeps focus on the user list on a wide viewport')`
-  - `it('goes back to the list and focuses the selected user')`: tras «Back to users», el botón
-    desaparece y el foco está en el botón `current` de Ervin.
-  - `it('keeps the search text after going back')`
+- **Test de integración** (sustituye al test trivial de P3.1, que queda dentro):
+  - `it('opens the selected user and goes back to the list on a narrow viewport')`, con
+    `matchMedia` simulado (`matches: true`):
+    1. Hay un `h1` `messages.app.title` y el detalle pide `messages.app.selectUser`.
+    2. Clic en «Ervin Howell» → el foco está en el `h2` «Ervin Howell».
+    3. Clic en `messages.app.backToUsers` → el botón desaparece y el foco está en el botón
+       `current` de Ervin.
+  - Que la búsqueda se conserve al volver lo comprueba el E2E móvil.
 - [ ] **Commit:** `feat: add mobile-first list and detail layout`
 
 ### P5.11 `<title>` por usuario
 
-- **Archivos:** `src/App.tsx` y `src/App.test.tsx`.
+- **Archivos:** `src/App.tsx` y `src/App.integration.test.tsx`.
 - **Comportamiento:** `App` renderiza `<title>` con el soporte de metadatos de React 19, que lo
   sube a `<head>`. Sin usuario seleccionado es `messages.app.title`; con uno,
   `messages.app.pageTitle(name)` (`{name} · Postboard`). Se mantiene aunque `mobileView`
@@ -698,10 +733,10 @@ Cada una tiene un test en la pieza que la resuelve.
 - **Comprobación en el navegador:** `index.html` ya trae `<title>Postboard</title>`. Si con los
   dos `<title>` el de `index.html` gana en `document.title`, se quita de `index.html` y `App`
   pasa a ser la única fuente. Lo confirma el E2E de P8.1.
-- **Tests:**
-  - `it('uses Postboard as the page title when no user is selected')`
-  - `it('shows the selected user in the page title')`: clic en «Ervin Howell» →
-    `document.title === messages.app.pageTitle('Ervin Howell')`.
+- **Test de integración:**
+  - `it('shows the selected user in the page title')`: sin selección,
+    `document.title === messages.app.title`; tras clic en «Ervin Howell»,
+    `messages.app.pageTitle('Ervin Howell')`.
 - [ ] **Commit:** `feat: show the selected user in the page title`
 
 ### Cierre de P5
@@ -722,12 +757,10 @@ Cada una tiene un test en la pieza que la resuelve.
 
 - **Archivos:** `src/lib/validatePost.ts` y `.test.ts`.
 - **Textos:** `form.titleRequired` y `form.bodyRequired`.
-- **Tests:**
-  - `it('requires a title and a text')`: `{ title: '', body: '' }` →
+- **Test** (que los valores válidos no den error lo cubre el envío correcto de `PostForm`):
+  - `it('requires a title and a text, also when they only contain spaces')`:
+    `{ title: '', body: '   ' }` →
     `{ title: messages.form.titleRequired, body: messages.form.bodyRequired }`.
-  - `it('rejects fields that only contain spaces')`
-  - `it('returns no errors for valid values')`: → `{}`.
-  - `it('reports only the missing field')`
 - [ ] **Commit:** `feat: add post form validation`
 
 ### P6.2 `useUserPosts`
@@ -736,16 +769,14 @@ Cada una tiene un test en la pieza que la resuelve.
 - **Comportamiento:** cada vez que cambia `userId`, aborta la petición anterior y llama a
   `getPostsByUser(userId, signal)`. Los posts se mapean a `PostEntry` con la clave
   `post-{id}`. `retry()` repite la petición. No sabe nada de los posts creados.
-- **Tests** (`renderHook` + MSW):
-  - `it('starts in the loading state')`
-  - `it('returns the user posts with stable keys')`: las claves son `post-1` y `post-2`.
-  - `it('returns an error when the API answers 500')`
-  - `it('returns an error when the network fails')`
+- **Tests** (`renderHook` + MSW; la cancelación al desmontar es el mismo cleanup que prueba el
+  cambio de usuario):
+  - `it('returns the user posts with stable keys after a loading state')`: de `loading` a
+    `success`, con las claves `post-1` y `post-2`.
   - `it('aborts the previous request when userId changes')`: el usuario 1 responde con retraso
     y el 2 al momento. Tras `rerender({ userId: 2 })`, `data` es solo de Ervin, también después
     de que llegue la respuesta del 1, y la señal del 1 está abortada.
-  - `it('aborts the request on unmount')`
-  - `it('fetches again on retry after an error')`
+  - `it('returns an error and fetches again on retry')`
 - [ ] **Commit:** `feat: add useUserPosts hook with abort on user change`
 
 ### P6.3 `createdPostsStorage`
@@ -768,21 +799,14 @@ Son funciones puras: reciben el `Storage` como parámetro y no tocan globales, s
   - `getBrowserStorage`: devuelve `window.localStorage` dentro de un `try/catch`, porque solo
     acceder a él puede lanzar `SecurityError`.
 - **Tests:**
-  - `it('builds a versioned key per user')`: `getCreatedPostsKey(1)` →
-    `'postboard:created-posts:v1:1'`.
-  - `it('returns an empty list when nothing is stored')`
-  - `it('writes posts and reads them back')`
-  - `it('keeps each user separate')`
-  - `it('ignores data that is not valid JSON')`
-  - `it('ignores data that is not a list')`: `'{}'`, `'null'` y `'42'`.
-  - `it('drops entries with an invalid shape and keeps the valid ones')`
-  - `it('drops entries that belong to another user')`
-  - `it('returns an empty list when reading throws')`: `vi.spyOn(Storage.prototype, 'getItem')`
-    lanza.
-  - `it('reports false instead of throwing when writing fails')`: `setItem` lanza
-    `QuotaExceededError`.
-  - `it('returns null when localStorage cannot be accessed')`: el getter de
-    `window.localStorage` lanza.
+  - `it('writes posts under a versioned key per user and reads them back')`: se guarda en
+    `'postboard:created-posts:v1:1'`, se lee lo mismo, y el usuario 2 sigue vacío.
+  - `it('ignores corrupt data and keeps only valid entries of the user')`: JSON inválido y
+    valores que no son una lista (`'{}'`, `'null'`) dan `[]`; en una lista mezclada se quedan
+    solo las entradas válidas del usuario pedido.
+  - `it('never throws when storage is blocked or full')`: si `getItem` lanza, la lectura da
+    `[]`; si `setItem` lanza `QuotaExceededError`, la escritura da `false`; y si el getter de
+    `window.localStorage` lanza, `getBrowserStorage()` da `null`.
 - [ ] **Commit:** `feat: add defensive created posts storage`
 
 ### P6.4 `useCreatedPosts`
@@ -802,13 +826,9 @@ Son funciones puras: reciben el `Storage` como parámetro y no tocan globales, s
       ya no está montado, no hace nada.
   - Si la escritura falla, el post sigue en memoria.
   - Nunca lanza.
-- **Tests** (`renderHook`):
-  - `it('starts with the posts stored for the user')`
-  - `it('saves a post and recovers it after remounting')`
-  - `it('keeps posts isolated per user')`
-  - `it('ignores corrupt stored data')`
-  - `it('starts empty when reading storage throws')`
-  - `it('keeps the post in memory when writing storage throws')`
+- **Tests** (`renderHook`; los datos corruptos y el storage caído ya los cubren
+  `createdPostsStorage` y `PostsPanel`):
+  - `it('starts with the stored posts and keeps new ones after remounting')`
   - `it('stores the post under its own userId even after unmounting')`: tras `unmount()`, se
     llama a `saveCreatedPost` y `readCreatedPosts(localStorage, 1)` lo contiene.
 - [ ] **Commit:** `feat: add useCreatedPosts hook backed by localStorage`
@@ -820,15 +840,16 @@ Son funciones puras: reciben el `Storage` como parámetro y no tocan globales, s
   `messages.form.submitting`; si no, dice `messages.form.submit`. Es `type="submit"` y tiene
   `min-h-11`. Tiene que renderizarse dentro de un `<form>`.
 - **Textos:** `form.submit` y `form.submitting`.
-- **Tests:**
-  - `it('shows Publish post when the form is idle')`
+- **Test:**
   - `it('is disabled and shows Publishing… while the form action is pending')`: se renderiza
-    dentro de `<form action={() => new Promise(() => {})}>` y se hace clic.
+    dentro de `<form action={() => new Promise(() => {})}>`; antes dice `messages.form.submit`
+    y, tras el clic, está desactivado con `messages.form.submitting`.
 - [ ] **Commit:** `feat: add SubmitButton with form pending state`
 
 ### P6.6 `PostForm`
 
-- **Archivos:** `src/components/PostForm.tsx` y `.test.tsx`.
+- **Archivos:** `src/components/PostForm.tsx` y `.integration.test.tsx` (integra
+  `validatePost`, `SubmitButton` y las actions de React reales).
 - **Props y estado:** los de la sección 4. Usa `useActionState(publishAction, initialState)`,
   con `<form action={formAction} noValidate>` y el `h3` `messages.form.heading`.
 - **Textos:** `form.heading`, `form.titleLabel`, `form.bodyLabel`, `form.published` y
@@ -849,15 +870,15 @@ Son funciones puras: reciben el `Storage` como parámetro y no tocan globales, s
   - `errors.form` va en un `role="alert"` y `published` muestra `messages.form.published` en
     un `role="status"`.
   - `SubmitButton` va dentro del formulario.
-- **Tests** (`onPublish` es un `vi.fn()`):
-  - `it('labels the title and text fields')`
-  - `it('shows both errors and does not publish when submitted empty')`: dos alertas, los inputs
-    con `aria-invalid` y descripción accesible (`toHaveAccessibleDescription`), y `onPublish`
-    sin llamar.
-  - `it('rejects fields that only contain spaces')`: además, los espacios escritos se
-    conservan.
-  - `it('publishes trimmed values')`: `onPublish` recibe `{ title: 'Hello', body: 'World' }`.
-  - `it('clears the form and announces success after publishing')`
+- **Tests de integración** (`onPublish` es un `vi.fn()`; los inputs se buscan por su label, así
+  que los labels quedan probados en todos):
+  - `it('shows accessible errors and does not publish when fields are empty or blank')`: título
+    vacío y texto con solo espacios → dos alertas, los inputs con `aria-invalid` y descripción
+    accesible (`toHaveAccessibleDescription`), los espacios escritos se conservan y
+    `onPublish` sin llamar.
+  - `it('publishes trimmed values, clears the form and announces success')`: `onPublish` recibe
+    `{ title: 'Hello', body: 'World' }`, los inputs se vacían y se anuncia
+    `messages.form.published`.
   - `it('keeps what was typed and shows an error when publishing fails')`: `onPublish` lanza
     → alerta `messages.form.publishError` y los inputs con sus valores.
   - `it('publishes once on a double click')`: `onPublish` devuelve una promesa pendiente y, tras
@@ -875,17 +896,16 @@ Son funciones puras: reciben el `Storage` como parámetro y no tocan globales, s
   - Un post `pending` lleva `aria-busy="true"` y la etiqueta `messages.posts.pending`.
   - Si no hay posts, muestra `messages.posts.empty`.
 - **Textos:** `posts.pending` y `posts.empty`.
-- **Tests:**
-  - `it('renders each post title and text')`
-  - `it('shows an empty message when there are no posts')`
-  - `it('marks pending posts as publishing')`
+- **Tests** (el XSS también comprueba que se pintan el título y el texto):
   - `it('renders markup in titles and text as plain text')`: un título
     `<img src=x onerror=alert(1)>` aparece literal y no hay ningún `img`.
+  - `it('marks pending posts as publishing')`
+  - `it('shows an empty message when there are no posts')`
 - [ ] **Commit:** `feat: add PostList component`
 
 ### P6.8 `PostsPanel`
 
-- **Archivos:** `src/components/PostsPanel.tsx` y `.test.tsx`.
+- **Archivos:** `src/components/PostsPanel.tsx` y `.integration.test.tsx`.
 - **Props:** las de la sección 4. `headingRef` usa el ref como prop de React 19, sin
   `forwardRef`.
 - **Comportamiento:**
@@ -909,38 +929,34 @@ Son funciones puras: reciben el `Storage` como parámetro y no tocan globales, s
     para la parte de la API, con `messages.posts.loading` y `messages.posts.loadError`. Los
     creados se ven aunque la API falle.
 - **Textos:** `posts.loading`, `posts.loadError` y `posts.postsCount`.
-- **Tests** (MSW):
-  - `it('shows the user header')`
-  - `it('shows a loading status and then the posts')`
-  - `it('shows an error and recovers with Try again')`: el error sale solo aquí y los posts
-    creados siguen visibles.
-  - `it('shows a new post as pending until the API confirms it')`: con el POST retrasado se ve
-    `messages.posts.pending` en la lista; después desaparece y el post queda arriba.
-  - `it('removes the pending post and shows an error when publishing fails')`: con POST 500,
-    el post desaparece, se ve la alerta y el formulario conserva lo escrito.
-  - `it('shows two created posts even though the API returns the same id')`: dos títulos, el
-    contador sube en 2 y no hay ningún `console.error` de claves repetidas (con un spy).
-  - `it('shows created posts above the API posts')`
-  - `it('keeps created posts after remounting')`
-  - `it('does not store a post when publishing fails')`: la clave de `localStorage` no
-    existe.
+- **Tests de integración** (MSW, con `useUserPosts`, `useCreatedPosts`, `PostForm` y `PostList`
+  reales):
+  - `it('shows a new post as pending and then above the API posts')`: primero
+    `messages.posts.loading` y los posts; con el POST retrasado se ve `messages.posts.pending`;
+    después desaparece y el post queda arriba de los de la API.
+  - `it('shows two created posts even though the API returns the same id')`: dos títulos,
+    `messages.posts.postsCount` sube en 2 y no hay ningún `console.error` de claves repetidas
+    (con un spy). Punto de revisión 2.
+  - `it('rolls back the pending post and stores nothing when publishing fails')`: con
+    `POST /posts` en 500, el post pendiente aparece y después desaparece, sale la alerta
+    `messages.form.publishError` y la clave de `localStorage` del usuario no existe. Es la
+    marcha atrás de `useOptimistic`.
+  - `it('shows a posts error and recovers with Try again, keeping created posts')`: con un post
+    creado guardado, `GET /posts` da 500 → alerta `messages.posts.loadError` y el post creado
+    sigue visible; tras `messages.common.tryAgain`, los posts de la API. Punto de revisión 5.
   - `it('still publishes when storage is unavailable')`: `setItem` lanza y el post aparece
-    igualmente.
+    igualmente. Punto de revisión 4.
 - [ ] **Commit:** `feat: add PostsPanel with optimistic and persisted posts`
 
 ### P6.9 `App` con el detalle de posts
 
-- **Archivos:** `src/App.tsx` y `src/App.test.tsx`.
+- **Archivos:** `src/App.tsx` y `src/App.integration.test.tsx`.
 - **Comportamiento:** el detalle renderiza
   `<PostsPanel key={user.id} user={user} headingRef={detailHeadingRef} />`. La `key` reinicia
   el formulario y el estado optimista al cambiar de usuario. El foco en móvil (de P5.10) pasa a
   usar ese `headingRef`.
-- **Tests:** los de P5.10 se mantienen y se añaden:
-  - `it('shows the posts of the selected user')`
-  - `it('creates a post for the selected user')`: el flujo completo, del clic en el usuario al
-    post visible arriba.
-  - `it('keeps each user created posts when switching users')`: se crea un post para Leanne, se
-    va a Ervin (no aparece) y se vuelve a Leanne (sigue ahí).
+- **Test de integración** (los de P5.10 y P5.11 se mantienen; ver los posts y crear uno lo
+  cubren `PostsPanel` y los E2E):
   - `it('stores the post for the original user when switching users while publishing')`:
     1. Con el POST retrasado, se publica para Leanne y se cambia a Ervin antes de que responda.
        El post no aparece en Ervin, tampoco cuando el POST termina.
@@ -1023,9 +1039,13 @@ horizontal overflow» y «touch target size».
 **Antes de seguir:** consultar en Context7 la configuración de `webServer` y `page.route` en
 Playwright.
 
-### P8.1 Playwright, simulación de la red y flujo de usuarios
+Solo hay 4 E2E, uno por flujo que cruza toda la app. Lo que ya prueban la integración y los
+unitarios (filtros, validación, título, varios posts seguidos, datos corruptos, fallo al
+publicar) no se repite aquí.
 
-- **Archivos:** `playwright.config.ts`, `e2e/mockApi.ts`, `e2e/users.spec.ts` y `package.json`
+### P8.1 Playwright, simulación de la red y flujo de búsqueda
+
+- **Archivos:** `playwright.config.ts`, `e2e/mockApi.ts`, `e2e/search.spec.ts` y `package.json`
   (script `test:e2e`: `playwright test`).
 - **Configuración:** `testDir: './e2e'`; solo el proyecto `chromium`;
   `webServer: { command: 'pnpm dev --port 5173 --strictPort', url: 'http://localhost:5173',
@@ -1034,63 +1054,46 @@ Playwright.
   con `localStorage` vacío.
 - **`mockApi(page, options?)`:** primero registra una ruta que aborta cualquier petición que no
   vaya a `localhost`. Después registra las de `https://jsonplaceholder.typicode.com/**`, que
-  sirven los datos de `src/test/fixtures.ts`, con opciones para forzar 500, red caída o retraso
-  por endpoint. Devuelve un registro de las peticiones `POST`.
+  sirven los datos de `src/test/fixtures.ts`, con una opción para que `GET /users` falle una
+  vez con 500.
 - **Textos:** los specs importan `messages` de `src/i18n/messages.ts` (igual que importan
   `fixtures.ts`) y nunca repiten un literal de la interfaz.
-- **Flujos (`users.spec.ts`):**
-  - `test('lists the users from the API')`: 4 usuarios.
-  - `test('filters users by name ignoring case and spaces')`: `'  CLEM '` → 2 usuarios.
-  - `test('shows a message when no user matches')`
-  - `test('shows the selected user in the page title')`: `toHaveTitle(messages.app.title)` y,
-    tras elegir a Leanne, `toHaveTitle(messages.app.pageTitle('Leanne Graham'))`.
+- **Flujo (`search.spec.ts`):**
+  - `test('finds a user by name and opens their posts')`: se escribe `'  clem'`, quedan 2
+    usuarios, se elige a Clementine y se ve `messages.posts.empty`; se borra la búsqueda, se
+    elige a Leanne y se ven sus 2 posts. La página tiene `toHaveTitle` con
+    `messages.app.pageTitle('Leanne Graham')`, que confirma qué `<title>` gana (P5.11).
 - [ ] **Commit:** `test(e2e): add playwright with mocked api and user search flow`
 
-### P8.2 Flujo de posts
-
-- **Archivos:** `e2e/posts.spec.ts`.
-- **Flujos:**
-  - `test('shows the posts of the selected user after a loading status')`: con retraso en
-    `GET /posts`, se ve `messages.posts.loading` y después los posts.
-  - `test('publishes a post that shows as pending and then at the top of the list')`: con
-    retraso en `POST`.
-  - `test('publishes two posts in a row and shows both')`
-  - `test('blocks empty or blank fields and sends no request')`: se ven los dos errores y hay 0
-    `POST`.
-- [ ] **Commit:** `test(e2e): add posts and new post flows`
-
-### P8.3 Flujo de persistencia
+### P8.2 Flujo de persistencia
 
 - **Archivos:** `e2e/persistence.spec.ts`.
-- **Flujos:**
+- **Flujo:**
   - `test('keeps a published post after reloading the page')`: se crea un post para Leanne, se
-    recarga, se vuelve a elegir a Leanne y el post está arriba.
-  - `test('ignores corrupt stored data')`: con `page.addInitScript` se mete basura en la clave
-    de Leanne y la app carga sus posts de la API sin errores.
+    ve arriba, se recarga, se vuelve a elegir a Leanne y el post sigue arriba.
 - [ ] **Commit:** `test(e2e): add created posts persistence flow`
 
-### P8.4 Flujo de errores
+### P8.3 Flujo de errores
 
 - **Archivos:** `e2e/errors.spec.ts`.
-- **Flujos:**
-  - `test('recovers from a users error with Try again')`
-  - `test('shows a posts error when the network fails')`
-  - `test('removes the pending post and keeps the form values when publishing fails')`
-- [ ] **Commit:** `test(e2e): add loading and error state flows`
+- **Flujo:**
+  - `test('recovers from an API error with Try again')`: `GET /users` falla una vez → alerta
+    `messages.users.loadError`; tras `messages.common.tryAgain`, la lista de usuarios.
+- [ ] **Commit:** `test(e2e): add api error recovery flow`
 
-### P8.5 Flujo móvil
+### P8.4 Flujo móvil
 
 - **Archivos:** `e2e/mobile.spec.ts`.
-- **Flujos:**
-  - `test('goes from the list to the posts and back on a 375px screen')`: viewport 375×812.
-    - Al elegir un usuario, la lista se oculta (`toBeHidden`) y el foco está en el título del
-      panel.
-    - Tras «Back to users», el detalle se oculta, el foco está en el usuario y la búsqueda se
-      conserva.
-  - `test('has no horizontal scroll at 320px')`: viewport 320×640, en la vista de lista y en la
-    de detalle, `scrollWidth <= clientWidth`.
-  - `test('keeps touch targets at least 44px tall')`: los botones de usuario, «Back to users»,
-    los inputs y «Publish post» tienen un `boundingBox().height >= 44`.
+- **Flujo:**
+  - `test('goes from the list to the posts and back on a 320px screen')`: viewport 320×640.
+    - En la vista de lista no hay scroll horizontal
+      (`document.documentElement.scrollWidth <= clientWidth`).
+    - Se escribe en la búsqueda y se elige un usuario: la lista se oculta (`toBeHidden`), el
+      foco está en el título del panel y tampoco hay scroll horizontal.
+    - Tras `messages.app.backToUsers`, el detalle se oculta, el foco está en el usuario y la
+      búsqueda se conserva.
+- **Sin E2E propio:** que las áreas táctiles midan al menos 44px se revisa en las capturas de
+  P7.4 y en la verificación manual de P9.2.
 - [ ] **Commit:** `test(e2e): add small screen navigation flow`
 
 **Verificación de la fase:** `pnpm test:e2e` en verde, `pnpm test` no recoge nada de `e2e/` y
@@ -1114,6 +1117,8 @@ Playwright no recoge nada de `src/`.
     `pnpm typecheck`.
   - **Decisiones:** las de la sección 1 de este plan, más las que surjan en P3-P8 según el
     `AI_LOG.md`.
+  - **Tests:** la pirámide (unitarios, integración y E2E) con la tabla de la sección 8, puesta
+    al día con los tests reales.
   - **Qué haría con más tiempo:** como mínimo:
     - La URL por usuario (router).
     - Sincronizar los posts entre pestañas (evento `storage`).
@@ -1132,6 +1137,8 @@ Playwright no recoge nada de `src/`.
   `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm test:e2e` y `pnpm audit`.
 - **Revisiones manuales:**
   - Navegación solo con teclado, con el foco visible y el foco del cambio de vista en móvil.
+  - Las áreas táctiles miden al menos 44px (DevTools a 320px, en la vista de lista y en la de
+    detalle). El scroll horizontal a 320px ya lo comprueba el E2E móvil.
   - Lector de pantalla: los errores se anuncian y las cargas se anuncian como `status`.
   - `git log` muestra un commit por pieza.
   - No hay `.env` ni secretos.

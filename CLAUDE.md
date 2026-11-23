@@ -42,12 +42,30 @@ Commits progresivos que muestren cómo pienso; nunca un único commit con todo.
 
 - Cada función, hook y componente nuevo se crea **con su test en el mismo commit**, siguiendo TDD:
   test en rojo → código mínimo → refactor. Nunca se hace commit de código sin su test.
-- **Funciones de API:** Vitest + MSW, cubriendo éxito, error HTTP y error de red.
+### Pirámide de tests
+
+El objetivo es demostrar que se sabe testear en las tres capas, no acumular cantidad.
+
+- **Unitarios (la mayoría):** una pieza aislada. Funciones puras, funciones de API y hooks con
+  MSW, y componentes que solo pintan.
+- **Integración (menos):** varias piezas reales juntas, con MSW: `UsersPanel`, `PostForm`,
+  `PostsPanel` y `App`. Se llaman `*.integration.test.tsx`, para que la pirámide se vea en el
+  árbol.
+- **E2E (muy pocos):** Playwright con la app real y la red simulada con `page.route`; solo
+  flujos que cruzan toda la app.
+- **Cantidad:** cada test cubre un comportamiento distinto que merezca defenderse. Nada de
+  variaciones del mismo caso ni tests de lo trivial (los tipos no se testean).
+
+### Cómo se prueba cada cosa
+
+- **API:** el error HTTP, el error de red y la cancelación con la señal se prueban una sola vez,
+  en el cliente común (`request`). Cada función de la API solo comprueba su ruta, su método y
+  su cuerpo. Vitest + MSW.
 - **Hooks:** `renderHook` + MSW, cubriendo carga, éxito, error y, si aplica, cancelación con
   `AbortController`.
 - **Componentes:** Testing Library + user-event, buscando por rol, label o texto. `data-testid`
   solo si no hay otra opción.
-- **E2E:** Playwright para los flujos principales, con la red simulada mediante `page.route`.
+- **E2E:** Playwright, con la red simulada mediante `page.route`.
 - Vitest no ejecuta la carpeta `e2e/` y Playwright no ejecuta los tests unitarios.
 - Un commit por pieza (por ejemplo, un hook con su test), no un commit por fase.
 
