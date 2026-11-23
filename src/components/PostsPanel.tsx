@@ -76,7 +76,7 @@ export function PostsPanel({ user, headingRef }: PostsPanelProps) {
           {getInitials(user.name)}
         </span>
         <div className="min-w-0">
-          <h2 id={headingId} ref={heading} tabIndex={-1} className="font-serif text-2xl font-semibold">
+          <h2 id={headingId} ref={heading} tabIndex={-1} className="font-serif text-xl font-semibold md:text-2xl">
             {user.name}
           </h2>
           {/* An email has no spaces: it may break anywhere rather than widen the page. */}
