@@ -36,5 +36,8 @@ export const messages = {
   posts: {
     pending: 'Publishing…',
     empty: 'This user has no posts yet.',
+    loading: 'Loading posts…',
+    loadError: "Couldn't load posts.",
+    postsCount: (count: number) => `Posts (${count})`,
   },
 }

@@ -8,5 +8,6 @@ describe('messages', () => {
     expect(messages.app.pageTitle('Ervin Howell')).toBe('Ervin Howell · Postboard')
     expect(messages.users.usernameHandle('Bret')).toBe('@Bret')
     expect(messages.users.noUsersMatch('zzz')).toBe('No users match "zzz".')
+    expect(messages.posts.postsCount(3)).toBe('Posts (3)')
   })
 })
