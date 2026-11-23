@@ -26,3 +26,12 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# From the Vite react-ts template
+dist-ssr/
+*.local
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
