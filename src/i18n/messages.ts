@@ -22,4 +22,8 @@ export const messages = {
     loadError: "Couldn't load users.",
     noUsersMatch: (query: string) => `No users match "${query}".`,
   },
+  form: {
+    titleRequired: 'Enter a title.',
+    bodyRequired: 'Enter the post text.',
+  },
 }

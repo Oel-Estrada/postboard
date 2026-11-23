@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { messages } from './i18n/messages'
 
 // Every schema for data that comes from outside the app lives here, next to
 // its inferred type, so a type can never drift from its validation.
@@ -28,3 +29,12 @@ export type Post = z.infer<typeof postSchema>
 
 /** What `createPost` sends: a post without the id the API assigns. Derived, so it cannot drift. */
 export type NewPost = Omit<Post, 'id'>
+
+/** Fields of the new post form. `trim().min(1, …)` rejects empty or whitespace-only values. */
+export const postFormSchema = z.object({
+  title: z.string().trim().min(1, messages.form.titleRequired),
+  body: z.string().trim().min(1, messages.form.bodyRequired),
+})
+
+/** Values of the new post form, as validated by {@link postFormSchema}. */
+export type PostFormValues = z.infer<typeof postFormSchema>
