@@ -1,0 +1,10 @@
+# Postboard
+
+> A small React 19 + TypeScript app on JSONPlaceholder: browse users, search them by name, read a user's posts and publish a new one with a validated form. The API stores nothing, so created posts are kept per user in the browser's localStorage.
+
+It is a single page with no router. Data comes from https://jsonplaceholder.typicode.com; the interface is in English and follows the system light or dark theme.
+
+## Docs
+
+- [README](README.md): how to run it, the decisions behind it, the tests, the Lighthouse results and what comes next (in Spanish)
+- [AI log](AI_LOG.md): what the AI was asked in each phase, what was accepted and what was corrected (in Spanish)
