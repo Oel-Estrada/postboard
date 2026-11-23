@@ -34,6 +34,23 @@
   --text-2xl--line-height: 2.125rem;
 }
 
+/*
+ * Thin, quiet scrollbar. scrollbar-width and scrollbar-color are Baseline newly
+ * available, so they sit behind a feature check; other browsers keep their
+ * default scrollbar. No scrollbar-gutter: stable, because a reserved gutter
+ * would always sit between the selected tab and the panel.
+ */
+@utility scrollbar-discreet {
+  /* muted: 5.19:1 on paper, above the 3:1 a scrollbar thumb needs (WCAG 1.4.11). */
+  --scrollbar-thumb: var(--color-muted);
+  --scrollbar-track: transparent;
+
+  @supports (scrollbar-color: auto) {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+}
+
 @layer base {
   :root {
     /* Light palette only: native controls and scrollbars stay light too. */

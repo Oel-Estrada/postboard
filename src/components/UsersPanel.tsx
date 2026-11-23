@@ -26,7 +26,8 @@ export function UsersPanel({ selectedUserId, onSelectUser }: UsersPanelProps) {
   const [query, setQuery] = useState('')
 
   return (
-    <div className="flex flex-col gap-4 md:pr-4">
+    // From md it fills the column, so the list can shrink and scroll below the search.
+    <div className="flex flex-col gap-4 md:min-h-0 md:flex-1 md:pt-1 md:pb-2 md:pr-4">
       <UserSearch value={query} onChange={setQuery} />
       {users.status === 'loading' && <LoadingMessage>{messages.users.loading}</LoadingMessage>}
       {users.status === 'error' && (

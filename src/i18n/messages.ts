@@ -17,6 +17,7 @@ export const messages = {
   },
   users: {
     searchLabel: 'Search users',
+    searchPlaceholder: 'Type a name',
     usernameHandle: (username: string) => `@${username}`,
     loading: 'Loading users…',
     loadError: "Couldn't load users.",

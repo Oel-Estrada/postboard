@@ -43,16 +43,18 @@ function App() {
       <title>
         {selectedUser ? messages.app.pageTitle(selectedUser.name) : messages.app.title}
       </title>
-      <header className="px-4 pt-5 pb-4 md:px-6">
+      <header className="px-4 pt-4 pb-3 md:px-6">
         <h1 className="text-xl font-semibold">{messages.app.title}</h1>
       </header>
       {/* No gap between the columns: the selected user's tab has to touch the panel. */}
       <main className="px-4 pb-10 md:grid md:grid-cols-[18rem_minmax(0,1fr)] md:px-6">
         <div
           ref={usersColumnRef}
-          // Sticky only when the whole column fits in the viewport; on a short
-          // window it would hide the last users.
-          className={`${mobileView === 'list' ? 'block' : 'hidden md:block'} md:self-start md:[@media(min-height:45rem)]:sticky md:[@media(min-height:45rem)]:top-4`}
+          // From md the column stays in view, as tall as the window; only the
+          // user list scrolls. A scroll container clips what sticks out of it,
+          // so the column itself overlaps the panel's left border by 1px (above
+          // it, z-10) and the selected tab can cover that border from inside.
+          className={`${mobileView === 'list' ? 'block' : 'hidden'} md:sticky md:flex md:top-0 md:z-10 md:-mr-px md:h-dvh md:flex-col md:self-start`}
         >
           <UsersPanel
             selectedUserId={selectedUser?.id ?? null}

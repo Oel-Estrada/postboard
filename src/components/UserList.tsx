@@ -17,11 +17,12 @@ interface UserListProps {
  */
 export function UserList({ users, selectedUserId, onSelect }: UserListProps) {
   return (
-    // From md the list reaches the detail panel, so the selected tab can join it.
+    // From md the list reaches the detail panel, so the selected tab can join it,
+    // and it is the only part of the column that scrolls.
     // Tailwind removes the list style, and Safari then drops the list
     // semantics; role="list" restores them.
     // oxlint-disable-next-line jsx-a11y/no-redundant-roles
-    <ul role="list" className="flex flex-col gap-1 md:-mr-4">
+    <ul role="list" className="flex flex-col gap-0.5 md:-mr-4 md:min-h-0 md:scrollbar-discreet md:overflow-y-auto">
       {users.map((user) => {
         const isSelected = user.id === selectedUserId
         return (
@@ -32,12 +33,13 @@ export function UserList({ users, selectedUserId, onSelect }: UserListProps) {
               onClick={() => {
                 onSelect(user)
               }}
-              className={`flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-l-md border border-transparent px-3 py-2 text-left ${
+              // The ring goes inside: the scrolling list would clip it outside.
+              className={`relative flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-l-md border border-transparent px-3 py-1 text-left focus-visible:-outline-offset-2 ${
                 isSelected
-                  ? // Folder tab: one pixel wider, with no right border, so it
-                    // covers the panel's left border and joins the panel.
-                    'md:relative md:z-10 md:w-[calc(100%+1px)] md:border-rule md:border-r-transparent md:bg-card'
-                  : 'hover:bg-card/60'
+                  ? // Accent bar on the left; from md, a folder tab with no right
+                    // border that reaches the column's edge, over the panel's border.
+                    "before:absolute before:inset-y-2 before:left-0 before:w-1 before:rounded-r-full before:bg-accent before:content-[''] md:border-rule md:border-r-transparent md:bg-card"
+                  : 'hover:bg-card'
               }`}
             >
               <span
@@ -49,8 +51,8 @@ export function UserList({ users, selectedUserId, onSelect }: UserListProps) {
                 {getInitials(user.name)}
               </span>
               <span className="min-w-0">
-                <span className="block text-ink">{user.name}</span>{' '}
-                <span className="block text-sm text-muted">
+                <span className="block leading-5 text-ink">{user.name}</span>{' '}
+                <span className="block text-sm/4 text-muted">
                   {messages.users.usernameHandle(user.username)}
                 </span>
               </span>
