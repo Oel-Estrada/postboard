@@ -94,7 +94,28 @@ function App() {
                 headingRef={detailHeadingRef}
               />
             ) : (
-              <p className="text-muted">{messages.app.selectUser}</p>
+              // From md the panel is as tall as the window: the hint sits in its middle.
+              <div className="flex flex-col items-center justify-center gap-4 py-12 text-center md:h-full md:py-0">
+                {/* Decorative: an empty folder, the "office file" waiting for a user,
+                    in a circle like the users' monograms. */}
+                <span
+                  aria-hidden="true"
+                  className="flex size-20 items-center justify-center rounded-full bg-paper text-muted"
+                >
+                  <svg
+                    viewBox="0 0 48 48"
+                    className="size-10"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M6 12.5A2.5 2.5 0 0 1 8.5 10h9.2l4 4.5h17.8a2.5 2.5 0 0 1 2.5 2.5v19.5a2.5 2.5 0 0 1-2.5 2.5h-31A2.5 2.5 0 0 1 6 36.5Z" />
+                    <path d="M6 19h36" />
+                  </svg>
+                </span>
+                <p className="max-w-[28ch] text-muted">{messages.app.selectUser}</p>
+              </div>
             )}
           </div>
         </div>
