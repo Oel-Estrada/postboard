@@ -38,3 +38,9 @@ export const postFormSchema = z.object({
 
 /** Values of the new post form, as validated by {@link postFormSchema}. */
 export type PostFormValues = z.infer<typeof postFormSchema>
+
+/** A post with a React key that stays unique even when the API repeats ids (POST always returns 101). */
+export const postEntrySchema = postSchema.extend({ key: z.string() })
+
+/** A post as validated by {@link postEntrySchema}. */
+export type PostEntry = z.infer<typeof postEntrySchema>
