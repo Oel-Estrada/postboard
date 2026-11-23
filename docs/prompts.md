@@ -92,3 +92,40 @@ corregí o rechacé (y por qué). Es la ÚNICA fuente de la sección de IA del R
 3. Crea AI_LOG.md con la entrada de esta fase y un .gitignore básico.
 4. Enséñame todo y espera mi OK para hacer el commit "docs: add working rules and AI log".
 ```
+
+## P2 — Plan
+
+**Fecha:** 2026-11-23 10:17 (UTC+03:00)
+
+```text
+Antes de nada: añade al final de docs/prompts.md una sección "## P2 — Plan" con la fecha y la
+hora y este prompt COMPLETO y LITERAL, dentro de un bloque de código, sin resumirlo ni
+corregirlo. Va en el mismo commit que esta fase.
+
+Lee CLAUDE.md. Las reglas de CLAUDE.md mandan sobre las skills: si alguna skill quiere guardar
+documentos en docs/superpowers/ o hacer commits por su cuenta, no lo hagas; todo va en
+docs/plan.md y ningún commit sin mi OK.
+Usa superpowers:brainstorming en versión corta: el enunciado de CLAUDE.md ya es
+la especificación, así que pregúntame como mucho 5 cosas, solo las decisiones de verdad abiertas
+(estructura de carpetas, cómo se muestran la lista y el detalle, dirección visual).
+Para la dirección visual usa la skill frontend-design: propón una dirección sobria y cuidada
+con Tailwind, que no parezca una plantilla, pero sin pasarte de alcance.
+Luego usa superpowers:writing-plans para escribir docs/plan.md (en español) dividido en estas
+fases:
+- P3 scaffold y librerías
+- P4 capa de API
+- P5 usuarios y búsqueda
+- P6 posts y formulario
+- P7 pulido visual
+- P8 tests E2E
+- P9 README y verificación final.
+
+Para cada fase lista sus piezas (función, hook o componente, con su nombre en inglés) y, por
+cada pieza, sus tests y su mensaje de commit, siguiendo las reglas de tests e idioma de
+CLAUDE.md. En P8 lista los flujos E2E.
+El plan describe piezas, firmas, casos de test y commits, pero NO incluye la implementación
+completa: el código se escribe con TDD en cada fase. Al terminar el plan, no ofrezcas ni
+empieces la ejecución.
+
+No escribas código. Actualiza AI_LOG.md y espera mi OK para el commit.
+```
