@@ -1290,3 +1290,134 @@ commit `docs: log p9 prompt and ai decisions`. En tu respuesta dame la lista de 
 manuales que tengo que hacer yo (teclado y foco visible, áreas táctiles a 320px, lector de
 pantalla) y las 5 frases para la entrevista. No hagas push.
 ```
+
+## P10 — Retoques de diseño y Lighthouse
+
+**Fecha:** 2026-11-23 21:49 (UTC+03:00)
+
+```text
+Antes de nada: añade al final de docs/prompts.md una sección "## P10 — Retoques de diseño y
+Lighthouse" con la fecha y la hora y este prompt COMPLETO y LITERAL, dentro de un bloque de
+código, sin resumirlo ni corregirlo. Igual que en fases anteriores, añade también, literal y
+con su hora, cada mensaje que te mande durante la fase. Todo eso va en el commit de docs que
+cierra la fase, con AI_LOG.md. Respóndeme en español.
+
+Esta fase no está en docs/plan.md: es una pasada final que decidí tras ver la app. No uses
+brainstorming ni writing-plans. Lee CLAUDE.md, la dirección visual de docs/plan.md
+(sección 1), AI_LOG.md (sobre todo P7) y README.md.
+
+Usa la skill frontend-design. Solo estilo (más un SVG decorativo): no cambies la lógica, los
+tests no se tocan (los 54 deben seguir pasando igual), sin dependencias nuevas, textos desde
+messages, regla 60-30-10 y contraste comprobado. Límite: 60–75 minutos.
+
+1. Capturas "antes" con Playwright (ya instalado) a 320, 375 y 1280 px: lista, detalle vacío
+   y detalle con un usuario. Guárdalas fuera del repo y dime dónde están.
+2. Retoques, cada uno en su commit `style:`:
+   a. Estado vacío del detalle en escritorio: hoy es un panel blanco enorme con una línea gris.
+      Centrado, con un icono SVG decorativo y el mismo texto.
+   b. Cabecera: una marca sencilla en SVG decorativo junto a "Postboard", como barra de la app.
+   c. Ancho máximo centrado para pantallas grandes (comprueba a 1920 px).
+   d. Opcional, si aporta: una elevación sutil del panel de detalle.
+   e. Modo oscuro con @media (prefers-color-scheme: dark), redefiniendo SOLO las variables de
+      color de @theme (y color-scheme), sin tocar componentes. Comprueba el contraste de todos
+      los pares (texto 4,5:1 y bordes de controles 3:1) y añade un segundo
+      <meta name="theme-color"> con media para el oscuro. Es el que se cae primero si falta
+      tiempo (entonces queda en "qué haría con más tiempo").
+3. Capturas "después" con las mismas vistas, en claro y en oscuro. Para con `pnpm dev`
+   levantado: enséñame dónde están las capturas, qué ha cambiado y qué debo mirar, y espera mi
+   OK visual antes de los commits.
+4. Lighthouse sobre el build de producción servido con `pnpm preview` (con
+   `pnpm dlx lighthouse`, sin añadirlo a package.json), en móvil y en escritorio: rendimiento
+   (LCP, CLS, TBT), accesibilidad, buenas prácticas y SEO. Enséñame los números. Arregla solo
+   lo que sea rápido y claro (15 minutos como máximo, en commits aparte); lo demás va a "qué
+   haría con más tiempo".
+5. Cierre: para el servidor (puertos libres), verificación final (pnpm test, test:e2e,
+   typecheck, lint, build), y actualiza el README en un commit `docs:`: la tabla de tiempos
+   completa con P9 y P10 y el total, el modo oscuro en las decisiones (y fuera de "qué haría
+   con más tiempo"), los números de Lighthouse y una captura de escritorio
+   (docs/screenshot.png) al principio. Actualiza AI_LOG.md (con **Duración:**) y prepara el
+   commit `docs: log p10 prompt and ai decisions`; para antes de hacerlo. No hagas push.
+```
+
+### P10 - OK visual, selector del E2E y nombre más pequeño en móvil
+
+**Fecha:** 2026-11-23 22:04 (UTC+03:00)
+
+```text
+He revisado las capturas: OK visual a las 5 piezas, sombra incluida. OK también al cambio
+mínimo del selector en e2e/search.spec.ts dentro del commit de (e): solo el selector, el mismo
+valor esperado y el mismo número de tests; anótalo en AI_LOG como excepción justificada a "los
+tests no se tocan" (el HTML cambió de verdad).
+Un ajuste más, en su propio commit `style: scale the user name down on small screens`: el
+nombre del usuario en la cabecera del detalle a text-xl en móvil y text-2xl desde md (a 320px
+parte incluso "Leanne Graham").
+Haz los 6 commits sin esperarme si cada uno pasa las cuatro puertas y test:e2e. Después sigue
+con Lighthouse (paso 4) y para con los números.
+```
+
+### P10 - Preconnect con bloqueo de DNS y cierre
+
+**Fecha:** 2026-11-23 22:22 (UTC+03:00)
+
+```text
+Haz el preconnect ahora, en dos commits:
+1. `test(e2e): block dns for external hosts`: en playwright.config.ts, launchOptions con
+   --host-resolver-rules que haga fallar la resolución de todo salvo localhost. Comprueba que
+   los 4 E2E siguen pasando y que un host externo no resuelve.
+2. `perf: preconnect to the api origin`: <link rel="preconnect"
+   href="https://jsonplaceholder.typicode.com" crossorigin> en index.html (con crossorigin,
+   porque los fetch a la API son CORS y sin él la conexión no se reutiliza).
+Vuelve a pasar Lighthouse en móvil y dame el LCP nuevo. Anota en AI_LOG la decisión y por qué
+el bloqueo de DNS refuerza la regla de no tocar la red. Lo demás, a "qué haría con más tiempo",
+como propones; "Agentic Browsing" no aplica.
+Después, el paso 5 (cierre) como dice el prompt, y para antes del commit de docs.
+```
+
+### P10 - Mis prioridades en «Qué haría con más tiempo» y cierre
+
+**Fecha:** 2026-11-23 22:33 (UTC+03:00)
+
+```text
+Antes del commit de cierre, integra mis ideas en "Qué haría con más tiempo" del README, en un
+commit aparte `docs: add my priorities to the roadmap`. Fusiónalas con los puntos que ya
+existen sin duplicar (router, i18n, View Transitions, zod/mini), y deja cada punto en 1–2
+líneas con su porqué.
+Arriba de la sección, una lista corta "Por dónde empezaría", en este orden:
+1. Backend propio con persistencia: crear, editar y borrar posts de verdad (hoy JSONPlaceholder
+   responde a POST/PUT/DELETE pero no guarda nada), y likes/dislikes con su contador, con
+   actualización optimista con useOptimistic como la publicación.
+2. React Router en modo framework: URL por usuario (el "Atrás" del móvil volvería a la lista)
+   y prerenderizado (SSG) o SSR de las páginas de usuario, para que el contenido llegue en el
+   HTML y se indexe; el SEO técnico ya da 100, pero hoy el contenido solo existe tras ejecutar
+   JS.
+3. TanStack Query: caché (volver a un usuario no repetiría la petición), reintentos,
+   deduplicación y mutaciones optimistas, y menos código propio. Aquí usé fetch y hooks propios
+   a propósito, para mostrar los fundamentos (cancelación, carreras, StrictMode) sin
+   dependencias.
+4. CI y despliegue: lint, typecheck, tests y E2E en cada cambio, con el informe y las trazas.
+5. Selector de tema claro/oscuro/sistema guardado en localStorage, y temas personalizados con
+   [data-theme]: es barato porque todos los colores ya son variables CSS.
+Y en los bloques de abajo:
+- Paginación o scroll infinito cuando haya volumen (hoy cada usuario tiene 10 posts), con
+  IntersectionObserver y un botón "Cargar más" como alternativa accesible.
+- i18n: librería sobre messages, español, plurales con Intl.PluralRules ("Posts (1)") y un
+  selector.
+- Analítica: Plausible o Umami (sin cookies) o GA4 con consentimiento, para uso y conversiones
+  (posts publicados), y los Core Web Vitals reales con web-vitals, porque Lighthouse solo mide
+  en laboratorio.
+- Code splitting con React.lazy por ruta cuando haya router; hoy, con una sola pantalla, lo que
+  más pesa es zod (ver zod/mini).
+- Animaciones más fluidas: View Transitions con el avatar "viajando" de la ficha a la cabecera
+  del detalle, siempre con prefers-reduced-motion.
+- Linter y formato más estrictos: más categorías de Oxlint, reglas con información de tipos
+  (promesas sin esperar), un formateador y hooks de pre-commit con las cuatro puertas.
+- Desarrollo con IA a medida del proyecto: skills y subagentes propios en .claude/ (una skill
+  de "pieza con TDD y mutaciones", un revisor con las reglas de CLAUDE.md) y hooks que pasen las
+  cuatro puertas antes de cada commit.
+
+La hora de fin de P10 es la de ese commit: actualiza en él la tabla de tiempos del README
+(P10 y el total). Después haz el cierre sin esperarme: AI_LOG con la misma Duración y una línea
+que diga que estas ideas son mías, y docs/prompts.md con este mensaje; commit
+`docs: log p10 prompt and ai decisions`. Dame git log --oneline -5, git status y el total de
+tiempo. No hagas push.
+```

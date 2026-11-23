@@ -1326,3 +1326,186 @@ entrevista.
   en él solo el cambio de `createPost`.
 - **Una sonda mal planteada:** la primera sonda del foco tras «Try again» apagó el fallo antes de
   que la recarga pidiera los usuarios. Se repitió esperando a la alerta.
+
+## P10 — Retoques de diseño y Lighthouse
+
+**Fecha:** 2026-11-23 21:49 (UTC+03:00)
+
+**Duración:** 21:49–22:34 (≈45 min). El fin es la hora del commit
+`docs: add my priorities to the roadmap`.
+
+**Qué pedí:** una pasada final que no estaba en `docs/plan.md`, decidida tras ver la app. Sin
+brainstorming ni writing-plans, y con la skill `frontend-design`. Las condiciones: solo estilo
+(más un SVG decorativo), sin tocar la lógica ni los tests (los 54 iguales), sin dependencias
+nuevas, textos desde `messages`, la regla 60-30-10 y el contraste comprobado, con un límite de
+60–75 minutos. Los pasos:
+
+1. Capturas «antes» con Playwright a 320, 375 y 1280 px.
+2. Retoques, cada uno en su commit `style:`:
+   - a. El estado vacío del detalle en escritorio.
+   - b. La cabecera como barra de la app, con una marca en SVG.
+   - c. Un ancho máximo centrado (comprobado a 1920).
+   - d. Opcional: una elevación sutil del panel.
+   - e. Modo oscuro redefiniendo solo las variables de color de `@theme`, con un segundo
+     `theme-color`.
+3. Capturas «después» en claro y en oscuro, y parar para mi OK visual.
+4. Lighthouse sobre `pnpm preview` en móvil y escritorio, arreglando solo lo rápido y claro.
+5. El cierre: servidores parados, verificación final, README y este registro.
+
+Durante la fase mandé tres mensajes (literales en `docs/prompts.md`):
+
+- El OK visual a las 5 piezas, el OK al cambio del selector del E2E y un ajuste más: el nombre
+  del usuario más pequeño en móvil.
+- Hacer ya el `preconnect`, bloqueando antes el DNS externo en los E2E.
+- Integrar mis prioridades en «Qué haría con más tiempo» del README.
+
+**Qué propuso la IA:**
+
+- **Capturas reproducibles:** un script de Playwright fuera del repo que sirve la API desde una
+  copia local de JSONPlaceholder (bajada una vez). Así el antes y el después tienen los mismos
+  datos y no dependen de la red. Están en `C:\WorkSpace\postboard-shots\` (`before`, `after` y
+  `lighthouse`).
+- **Antes de tocar CSS:**
+  - modern-web-guidance: `dark-mode` e `icons`.
+  - Context7 (Tailwind v4): las utilidades leen `var(--color-*)`, así que basta redefinir las
+    variables en `:root` dentro de la media query.
+- **a. Estado vacío:**
+  - Centrado en el panel, que desde `md` es tan alto como la ventana.
+  - Un icono de carpeta vacía (SVG `aria-hidden`) dentro de un círculo `paper` como los
+    monogramas, y el mismo texto.
+- **b. Barra de la app:**
+  - Fondo `card` con borde `rule` y una marca en `ink`: una carpeta con dos líneas de post.
+  - No usa `accent`, para no gastar el 10 % fuera de la selección, el foco y la acción principal.
+- **c. Ancho máximo:** 80rem, para que a 1280 px no cambie nada y a 1920 se centre.
+- **d. Elevación:** un token `--shadow-panel` que cae hacia abajo, comprobado a 2× para que la
+  pestaña siga pareciendo una pieza con el panel.
+- **e. Modo oscuro:**
+  - Paleta: `paper` `#121922`, `card` `#1B2430`, `ink` `#E4E9F0`, `muted` `#A3AAB5`, `rule`
+    `#2F3B4B`, `accent` `#8CB6E6`, `danger` `#F4978E` y `success` `#7FD39B`.
+  - `accent-deep` se mezcla con blanco, porque un acento claro se aclara en el hover.
+  - `color-scheme: light dark` y `<meta name="color-scheme">`, como pide la guía `dark-mode` para
+    el primer pintado.
+  - Contraste de cada par, medido:
+    - Texto: al menos 6,69:1.
+    - Bordes de los controles, foco y pulgar de la barra de scroll: al menos 6,69:1.
+    - Texto sobre `accent`: 7,42:1.
+    - El hover, medido en el navegador con el color oklab real: 8,73:1 en oscuro y 10,44:1 en
+      claro.
+  - La IA desaturó `muted` (de `#9AA7B8` a `#A3AAB5`) porque el email parecía un enlace.
+  - Se comprobaron también los errores de carga, los de validación y «Post published.».
+- **Una instantánea de los archivos tras cada pieza,** para hacer después un commit atómico por
+  pieza, cada uno con las cuatro puertas y `test:e2e`.
+- **Lighthouse:** dos arreglos rápidos. `robots.txt`, que era claro. El `preconnect`, que la IA no
+  hizo sola porque abre una conexión real desde el navegador de los E2E; propuso dejarlo para más
+  tiempo o hacerlo junto con un bloqueo de DNS.
+
+**Qué acepté:**
+
+- Las 5 piezas, sombra incluida, tras revisar las capturas.
+- La paleta oscura y sus medidas.
+- `robots.txt` (`feat:`).
+- El orden del `preconnect`: primero el bloqueo de DNS (`test(e2e):`) y después el `preconnect`
+  (`perf:`), con `crossorigin`.
+
+**Qué corregí o decidí yo:**
+
+1. **Excepción justificada a «los tests no se tocan».** Con dos `<meta name="theme-color">`, el
+   E2E de `search.spec.ts` que comprobaba `meta[name="theme-color"]` encontraba dos elementos y
+   fallaba en modo estricto. El HTML cambió de verdad, así que aprobé cambiar **solo el
+   selector**, que ahora pide el de `media="(prefers-color-scheme: light)"`. Se mantienen el mismo
+   valor esperado (`#eef1f4`) y los mismos 54 tests. La IA intentó aplicarlo antes de mi OK para
+   comprobarlo, y el clasificador de permisos lo bloqueó: el cambio esperó a mi aprobación.
+2. **El `theme-color` sigue en `paper`.** La IA lo había pasado a `#ffffff` para continuar la barra
+   blanca. Lo deshizo ella misma antes de la parada, para respetar mi decisión de P9 y no tocar el
+   test dos veces. El oscuro usa el `paper` oscuro (`#121922`).
+3. **El nombre del usuario, más pequeño en móvil** (`style: scale the user name down on small
+   screens`): `text-xl` en móvil y `text-2xl` desde `md`. A 320 px partía incluso «Leanne Graham»
+   en dos líneas.
+4. **Hacer el `preconnect` ya, pero con el DNS bloqueado en los E2E.** `page.route` solo intercepta
+   peticiones, no conexiones: con el `preconnect`, el navegador de los tests habría abierto DNS,
+   TCP y TLS contra JSONPlaceholder.
+   - Ahora Chromium arranca con `--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE localhost`, que
+     **refuerza la regla de no tocar la red**. Ya no depende solo de que cada ruta esté bien
+     escrita: aunque una ruta se olvide o un recurso abra una conexión por su cuenta, ningún host
+     externo resuelve.
+   - Se comprobó con una spec temporal, que no se guardó: `jsonplaceholder.typicode.com` da
+     `ERR_NAME_NOT_RESOLVED` y `localhost` responde 200. Los 4 E2E siguen pasando.
+5. **«Agentic Browsing» no aplica** (la categoría nueva de Lighthouse 13), y lo demás de Lighthouse
+   va a «qué haría con más tiempo».
+6. **Las ideas nuevas de «Qué haría con más tiempo» son mías**, en su propio commit
+   (`docs: add my priorities to the roadmap`):
+   - Arriba, una lista «Por dónde empezaría», en mi orden: backend propio con persistencia y
+     likes optimistas, React Router en modo framework con SSG o SSR, TanStack Query, CI y
+     despliegue, y un selector de tema.
+   - En los bloques de abajo: paginación, i18n con plurales, analítica con Core Web Vitals
+     reales, code splitting, View Transitions con el avatar, un linter y formato más estrictos y
+     herramientas de IA a medida del proyecto.
+   - La IA solo las fusionó con los puntos que ya había (router, i18n, View Transitions y
+     `zod/mini`) sin duplicarlos, y dejó cada punto en una o dos líneas con su porqué.
+
+**Lighthouse 13.6.0** (con `pnpm dlx`, sin tocar `package.json`; build de producción con la API
+real; informes en `C:\WorkSpace\postboard-shots\lighthouse\`):
+
+| | Móvil, 1.ª medición | Móvil, final (2 pasadas) | Escritorio, final |
+| --- | --- | --- | --- |
+| Rendimiento | 95 | 97–98 | 100 |
+| LCP | 2,6 s (2627 ms) | 2,5 s (2475 y 2529 ms) | 0,2 s |
+| CLS | 0 | 0 | 0 |
+| TBT | 150 ms | 10–60 ms | 0 ms |
+| Accesibilidad | 100 | 100 | 100 |
+| Buenas prácticas | 100 | 100 | 100 |
+| SEO | 91 | 100 | 100 |
+
+- **El LCP en móvil** es el nombre de un usuario, que espera a `GET /users`. Lighthouse estimaba
+  unos 457 ms de ahorro con el `preconnect` y la simulación dio unos 100–150 ms. Con el
+  `preconnect`, la petición observada pasó de 374 ms a 104–204 ms.
+- **El TBT cambió entre pasadas sin cambios de código** (150 y 0 ms en la segunda medición): es
+  ruido de la medición en móvil.
+- **A «qué haría con más tiempo»:**
+  - `zod/mini`: es casi todo el JS sin usar (53 KiB).
+  - El CSS bloquea el renderizado (5 KB, unos 150 ms estimados).
+  - Pedir `GET /users` antes de montar React.
+
+**Guías de modern-web-guidance:** se buscaron «dark mode color scheme», «theme color meta tag» y
+«empty state placeholder», y se leyeron `dark-mode` e `icons`. Influyeron así:
+
+- **`dark-mode`:**
+  - `<meta name="color-scheme" content="light dark">`, además de `color-scheme` en `:root`.
+  - Cambiar las variables solo en `:root` con la media query, sin `light-dark()`, que es
+    Baseline «Newly available».
+- **`icons`:** los SVG decorativos con `aria-hidden` y al menos 3:1 en los dos temas.
+
+**Context7:**
+
+- **Tailwind CSS:** redefinir variables del tema dentro de `prefers-color-scheme`.
+- **Playwright:** `use.launchOptions.args` en `playwright.config.ts`.
+
+**Desviaciones del prompt:**
+
+- **Commits de más, pedidos o aprobados por mí:** `style:` del nombre en móvil, `feat:` de
+  `robots.txt`, `test(e2e):` del DNS, `perf:` del `preconnect` y
+  `docs: add my priorities to the roadmap`.
+- **El selector del E2E** (la excepción de arriba).
+- **Tokens nuevos:** `--shadow-panel` y la paleta oscura. Ninguna clave nueva en `messages`: los
+  dos SVG son decorativos y el texto del estado vacío es el mismo.
+
+**Verificación final** (salida real, todo con exit 0):
+
+- `pnpm test`: 23 archivos y 50 tests, sin `console.error` ni `warn` en la salida.
+- `pnpm test:e2e`: 4 de 4.
+- `pnpm typecheck` y `pnpm lint`.
+- `pnpm build`: JS de 318,96 kB (96,95 kB gzip) y CSS de 18,65 kB (4,78 kB gzip).
+- `pnpm audit`: «No known vulnerabilities found».
+- Los puertos 4173 y 5173 quedan libres.
+
+**Incidentes:**
+
+- **`vite preview` y `pnpm dev` sobrevivieron a la parada** tres veces, como en P6 y P7. Cada vez
+  se comprobó por la línea de comandos que era el proceso lanzado en la fase, se cerró y se
+  verificó el puerto libre.
+- **El `preview` de Lighthouse ocupaba el 4173** y el primer `test:e2e` del commit de
+  `robots.txt` no pudo arrancar su servidor. Se paró el `preview` y se repitieron las puertas.
+- **Las primeras capturas tras pulsar un usuario** salían a mitad de la transición de 200 ms de la
+  pestaña (monograma atenuado). Se añadió una espera de 400 ms al script.
+- **Un heredoc mal cerrado** al escribir este registro: el comando falló sin escribir nada (se
+  comprobó con `git status`) y se rehízo con un archivo temporal.
