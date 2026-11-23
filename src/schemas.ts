@@ -25,3 +25,6 @@ export const postSchema = z.object({
 
 /** A post as validated by {@link postSchema}. */
 export type Post = z.infer<typeof postSchema>
+
+/** What `createPost` sends: a post without the id the API assigns. Derived, so it cannot drift. */
+export type NewPost = Omit<Post, 'id'>
