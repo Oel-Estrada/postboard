@@ -1,4 +1,4 @@
-import { startTransition, useOptimistic, useRef, type RefObject } from 'react'
+import { startTransition, useId, useOptimistic, useRef, type RefObject } from 'react'
 import { createPost } from '../api/posts'
 import { useCreatedPosts } from '../hooks/useCreatedPosts'
 import { useUserPosts } from '../hooks/useUserPosts'
@@ -32,6 +32,7 @@ export function PostsPanel({ user, headingRef }: PostsPanelProps) {
   // The heading also takes focus here, so the panel needs a ref even without one from App.
   const ownHeadingRef = useRef<HTMLHeadingElement>(null)
   const heading = headingRef ?? ownHeadingRef
+  const headingId = useId()
   const [visibleCreated, addPendingPost] = useOptimistic(
     createdPosts,
     (current: DisplayPost[], pending: DisplayPost) => [pending, ...current],
@@ -64,7 +65,8 @@ export function PostsPanel({ user, headingRef }: PostsPanelProps) {
   ]
 
   return (
-    <section className="flex flex-col gap-6">
+    // Named by the user heading, so it is a region screen readers can jump to.
+    <section aria-labelledby={headingId} className="flex flex-col gap-6">
       <div className="flex items-center gap-4 border-b border-rule pb-5">
         {/* Same mark as the selected user in the list. */}
         <span
@@ -74,7 +76,7 @@ export function PostsPanel({ user, headingRef }: PostsPanelProps) {
           {getInitials(user.name)}
         </span>
         <div className="min-w-0">
-          <h2 ref={heading} tabIndex={-1} className="font-serif text-2xl font-semibold">
+          <h2 id={headingId} ref={heading} tabIndex={-1} className="font-serif text-2xl font-semibold">
             {user.name}
           </h2>
           {/* An email has no spaces: it may break anywhere rather than widen the page. */}

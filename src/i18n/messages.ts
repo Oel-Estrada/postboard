@@ -16,6 +16,7 @@ export const messages = {
     tryAgain: 'Try again',
   },
   users: {
+    heading: 'Users',
     searchLabel: 'Search users',
     searchPlaceholder: 'Type a name',
     usernameHandle: (username: string) => `@${username}`,

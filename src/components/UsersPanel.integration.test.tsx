@@ -9,6 +9,8 @@ describe('UsersPanel', () => {
   it('shows a loading status and then the users', async () => {
     render(<UsersPanel selectedUserId={null} onSelectUser={vi.fn()} />)
 
+    // Visually hidden, but it names the column for screen reader heading navigation.
+    expect(screen.getByRole('heading', { level: 2, name: messages.users.heading })).toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent(messages.users.loading)
 
     expect(await screen.findAllByRole('button')).toHaveLength(users.length)

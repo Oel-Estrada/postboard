@@ -16,8 +16,8 @@ const ervinButtonName = buttonName(ervin)
 
 /** Titles of the posts in the user detail, in order. */
 function listedTitles() {
-  const detail = screen.getByRole('heading', { level: 2 }).closest('section')
-  if (!detail) throw new Error('The user detail is not shown')
+  // The detail is the only named region; the users column has its own h2.
+  const detail = screen.getByRole('region')
   return within(detail)
     .queryAllByRole('heading', { level: 4 })
     .map((heading) => heading.textContent)

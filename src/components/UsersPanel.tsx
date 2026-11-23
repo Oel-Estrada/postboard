@@ -36,6 +36,9 @@ export function UsersPanel({ selectedUserId, onSelectUser }: UsersPanelProps) {
   return (
     // From md it fills the column, so the list can shrink and scroll below the search.
     <div className="flex flex-col gap-4 md:min-h-0 md:flex-1 md:pt-1 md:pb-2 md:pr-4">
+      {/* Visually hidden: names the column for screen reader heading navigation.
+          sr-only is absolutely positioned, so it adds no gap to the flex layout. */}
+      <h2 className="sr-only">{messages.users.heading}</h2>
       <UserSearch ref={searchRef} value={query} onChange={setQuery} />
       {users.status === 'loading' && <LoadingMessage>{messages.users.loading}</LoadingMessage>}
       {users.status === 'error' && (

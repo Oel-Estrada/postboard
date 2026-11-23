@@ -63,6 +63,8 @@ describe('PostsPanel', () => {
     render(<PostsPanel user={leanne} />)
 
     expect(screen.getByRole('heading', { level: 2, name: leanne.name })).toBeInTheDocument()
+    // The section takes its name from that heading.
+    expect(screen.getByRole('region', { name: leanne.name })).toBeInTheDocument()
     expect(screen.getByText(leanne.email)).toBeInTheDocument()
     expect(screen.getByText(leanne.company.name)).toBeInTheDocument()
     expect(screen.getByText(messages.posts.loading)).toBeInTheDocument()
