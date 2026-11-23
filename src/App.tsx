@@ -44,7 +44,8 @@ function App() {
         {selectedUser ? messages.app.pageTitle(selectedUser.name) : messages.app.title}
       </title>
       <header className="border-b border-rule bg-card">
-        <div className="flex min-h-14 items-center gap-2.5 px-4 md:px-6">
+        {/* Same width as <main>, so the brand lines up with the users column. */}
+        <div className="mx-auto flex min-h-14 max-w-7xl items-center gap-2.5 px-4 md:px-6">
           {/* Decorative brand mark: a folder holding two posts. Theme colours, so it
               follows the palette. */}
           <svg aria-hidden="true" viewBox="0 0 28 28" className="size-7 shrink-0">
@@ -63,8 +64,9 @@ function App() {
           <h1 className="text-xl font-semibold">{messages.app.title}</h1>
         </div>
       </header>
-      {/* No gap between the columns: the selected user's tab has to touch the panel. */}
-      <main className="px-4 pt-4 pb-10 md:grid md:grid-cols-[18rem_minmax(0,1fr)] md:px-6">
+      {/* No gap between the columns: the selected user's tab has to touch the panel.
+          On wide screens the layout stops at 80rem and sits in the middle. */}
+      <main className="mx-auto max-w-7xl px-4 pt-4 pb-10 md:grid md:grid-cols-[18rem_minmax(0,1fr)] md:px-6">
         <div
           ref={usersColumnRef}
           // From md the column stays in view, as tall as the window; only the
