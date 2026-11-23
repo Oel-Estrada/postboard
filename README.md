@@ -5,6 +5,8 @@ una lista de usuarios con búsqueda por nombre y, al elegir uno, sus publicacion
 validado para crear una nueva. La API no guarda nada, así que los posts creados se guardan en
 `localStorage` por usuario y sobreviven a una recarga.
 
+![Postboard en escritorio: la columna de usuarios con Leanne Graham seleccionada como una pestaña unida al panel, el formulario «New post» y sus posts](docs/screenshot.png)
+
 ## Requisitos
 
 - **Node 24** (probado con 24.19.0).
@@ -33,7 +35,9 @@ pnpm test:e2e                                        # hace el build y lo sirve 
 ```
 
 Ningún test toca la red real: Vitest usa MSW, que falla ante cualquier petición sin handler, y
-Playwright aborta todo lo que no vaya a `localhost` y sirve la API con datos fijos.
+Playwright aborta todo lo que no vaya a `localhost` y sirve la API con datos fijos. Además,
+Chromium arranca en los E2E con una regla de DNS que no resuelve ningún host salvo `localhost`:
+ni siquiera una conexión (como el `preconnect` a la API) llega a salir.
 
 > **Aviso:** publicar un post necesita un contexto seguro (`localhost` o HTTPS), porque cada post
 > creado recibe un id local con `crypto.randomUUID()`, que el navegador solo ofrece ahí. Si abres
@@ -85,11 +89,19 @@ Playwright aborta todo lo que no vaya a `localhost` y sirve la API con datos fij
   escriben y los tests los importan. Los textos con datos se prueban contra literales.
 - **Dirección visual «Fichero de oficina»:** paleta cerrada en tokens de Tailwind v4, fuentes
   del sistema (sin red en los E2E) y un solo elemento memorable: el usuario seleccionado es una
-  pestaña unida al panel de detalle.
+  pestaña unida al panel de detalle. La cabecera es una barra con una marca en SVG decorativo, el
+  contenido se centra con un ancho máximo de 80rem y el estado vacío del detalle lleva un icono.
+- **Modo oscuro con `prefers-color-scheme`:** solo se redefinen las variables de color de `@theme`
+  y `color-scheme: light dark`; ningún componente sabe que existe. Se midió cada par: el texto y
+  los bordes de los controles, el foco y la barra de scroll pasan de 6,69:1 en oscuro.
+  `index.html` declara `color-scheme` y un `theme-color` por tema. Sin selector de tema: sigue al
+  sistema.
 - **Accesibilidad:** contraste comprobado (bordes de los controles en 3:1, no solo el texto),
   foco visible, áreas táctiles de 44px, sin scroll horizontal a 320px, errores con
   `role="alert"` y cargas con `role="status"`. Las animaciones solo si el sistema no pide
   movimiento reducido.
+- **`preconnect` al origen de la API** (con `crossorigin`, porque los `fetch` son CORS): el LCP en
+  móvil es un nombre de la lista, que espera a `GET /users`.
 - **El foco no se pierde tras una acción asíncrona:** después de publicar (o de fallar al
   publicar) vuelve al título, y tras «Try again» va al buscador o al título del usuario. Cada
   «Post published.» se anuncia, también el segundo.
@@ -128,6 +140,28 @@ Playwright aborta todo lo que no vaya a `localhost` y sirve la API con datos fij
   cubrieron con una aserción nueva o quedaron anotadas. En los E2E, cada spec se vio fallar con
   la app rota a propósito.
 
+## Rendimiento y Lighthouse
+
+Lighthouse 13.6.0 sobre el build de producción (`pnpm preview`), con la API real y el
+estrangulamiento simulado de Lighthouse en móvil. En móvil, dos pasadas:
+
+| | Móvil | Escritorio |
+| --- | --- | --- |
+| Rendimiento | 97–98 | 100 |
+| LCP | 2,5 s | 0,2 s |
+| CLS | 0 | 0 |
+| TBT | 10–60 ms | 0 ms |
+| Accesibilidad | 100 | 100 |
+| Buenas prácticas | 100 | 100 |
+| SEO | 100 | 100 |
+
+- **Qué se arregló tras la primera medición:** un `robots.txt` (sin él, el fallback de la SPA
+  devolvía `index.html` y el SEO daba 91) y el `preconnect` a la API (LCP en móvil de 2,6 a
+  2,5 s; Lighthouse estimaba más ahorro del que dio).
+- **El LCP en móvil es el nombre de un usuario** de la lista, así que depende de lo que tarde
+  JSONPlaceholder. Lo pendiente está en «Qué haría con más tiempo».
+- La categoría «Agentic Browsing» de Lighthouse 13 (`llms.txt`) no aplica a esta app.
+
 ## Qué haría con más tiempo
 
 **Producto**
@@ -159,13 +193,21 @@ Playwright aborta todo lo que no vaya a `localhost` y sirve la API con datos fij
   «Back to users» deja el foco en `body`.
 - **Avisos de carga más fiables:** un contenedor `role="status"` fijo por panel en el que solo
   cambie el texto, porque una región viva que se inserta ya con texto no siempre se anuncia.
-- **Modo oscuro** y una revisión con el modo de alto contraste de Windows (`forced-colors`).
+- **Una revisión con el modo de alto contraste de Windows** (`forced-colors`): la pestaña y la
+  barra de acento dependen de fondos y de un pseudo-elemento.
 - **View Transitions** entre la lista y el detalle, con la API nativa, detección y fallback, sin
   tocar la gestión del foco.
 
+**Rendimiento**
+
+- **`zod/mini`:** la medición dio +4,8 kB gzip frente a +23,8 kB de la API clásica, y es casi todo
+  el JS sin usar que marca Lighthouse (53 KiB).
+- **El CSS bloquea el primer pintado** (5 KB, unos 150 ms estimados en móvil): meter en el HTML el
+  CSS crítico pide cambiar el build.
+- **Bajar más el LCP en móvil:** pedir `GET /users` antes de montar React, en vez de esperar al JS.
+
 **Código y tests**
 
-- **`zod/mini`:** la medición dio +4,8 kB gzip frente a +23,8 kB de la API clásica.
 - Registrar en consola los errores de carga (un cambio de forma de la API hoy no deja rastro), y
   que `useUserPosts` vuelva a `loading` al cambiar de usuario aunque no se remonte el panel.
 - **El arranque en frío de los tests:** medir con `maxWorkers` limitado, `isolate: false` o un
@@ -205,6 +247,11 @@ decisión final fue siempre mía. Los prompts están completos y literales en
   arreglarlos: el segundo «Post published.» no se anunciaba y el foco caía en `body` tras publicar
   y tras «Try again». Aprobé esos arreglos y uno menor (nombrar la columna y el detalle para los
   lectores de pantalla); el resto de menores, valorados uno a uno, están arriba.
+- **En la pasada final de diseño (P10)** aprobé cada retoque sobre capturas de antes y después, en
+  claro y en oscuro, con el contraste de cada par medido por la IA. Aprobé una sola excepción a «los
+  tests no se tocan»: el selector del E2E del `theme-color`, porque el HTML cambió de verdad. De
+  Lighthouse, decidí hacer ya el `preconnect`, pero solo después de bloquear el DNS externo en los
+  E2E para que siguieran sin tocar la red.
 
 ## Tiempo empleado
 
@@ -222,6 +269,6 @@ duración: salen de la hora de inicio de la fase siguiente.
 | P6 — Posts, formulario y persistencia | 15:50–18:32 | 162 |
 | P7 — Pulido visual | 18:32–20:09 | 97 |
 | P8 — Tests E2E | 20:09–20:49 | 40 |
-| **P1–P8** | | **648 (10 h 48 min)** |
-
-La duración de P9 (este README y la verificación final) queda en [AI_LOG.md](AI_LOG.md).
+| P9 — README y verificación | 20:49–21:37 | 48 |
+| P10 — Retoques de diseño y Lighthouse | 21:49–22:28 | 39 |
+| **Total** | | **735 (12 h 15 min)** |
