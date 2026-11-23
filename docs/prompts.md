@@ -129,3 +129,95 @@ empieces la ejecución.
 
 No escribas código. Actualiza AI_LOG.md y espera mi OK para el commit.
 ```
+
+## P2b - Revisión del plan
+
+**Fecha:** 2026-11-23 10:31 (UTC+03:00)
+
+```text
+Antes de nada: añade al final de docs/prompts.md una sección "## P2b - Revisión del plan"
+con la fecha y la hora y este mensaje COMPLETO y LITERAL, dentro de un bloque de código.
+Va en el commit de la revisión (paso 2).
+
+1. Commit del plan tal como está: en la entrada P2 de AI_LOG.md pon que acepté tus 4
+   recomendaciones y que mis correcciones van en la entrada P2b. Haz el commit
+   "docs: add implementation plan".
+
+2. Después revisa docs/plan.md y CLAUDE.md con estos cambios:
+
+a) Persistencia de los posts creados en localStorage (sustituye la decisión de que se
+   pierden al cambiar de usuario):
+   - Por usuario, con una clave versionada (por ejemplo `postboard:created-posts:v1`).
+   - Se guarda solo cuando el POST responde bien.
+   - Lectura defensiva: try/catch (storage no disponible o lleno), JSON.parse protegido y
+     validación de la forma con un type guard. Si los datos no son válidos se ignoran sin
+     romper la app.
+   - Los posts creados se muestran arriba de los de la API, siempre como texto (nunca
+     dangerouslySetInnerHTML).
+   - Piezas nuevas con sus tests: las funciones de storage (puras) y su hook. Tests: se
+     guarda y se recupera tras remontar, aislado por usuario, los datos corruptos o con forma
+     inválida se ignoran, y un storage que lanza error no rompe la app.
+   - E2E: crear un post, recargar la página y que siga ahí.
+
+b) Responsive, mobile-first:
+   - En móvil (< md): vista lista → detalle. Al elegir un usuario se muestra su panel con un
+     botón "Back to users" y el foco va al título del panel. Desde md, dos columnas.
+   - Áreas táctiles de al menos 44px y sin scroll horizontal a 320px.
+   - Va en la fase donde se crea el layout (no solo en P7), con test del cambio de vista.
+     P7 lo pule y P8 añade un flujo E2E con viewport móvil (375px).
+
+c) React 19 (la plantilla ya lo trae). Usa sus APIs donde aporten, sin forzarlas:
+   - Formulario con `<form action>` + useActionState: valida con validatePost, hace el POST
+     y devuelve { errors, submitted }. Usa defaultValue con lo enviado para no perder lo
+     escrito si falla; el reset automático de React limpia el formulario cuando todo va bien.
+   - useFormStatus en un SubmitButton hijo del form para el estado pending (botón
+     desactivado y "Publishing…").
+   - useOptimistic para que el post aparezca al instante marcado como pendiente y
+     desaparezca, con el error visible, si el POST falla.
+   - No uses useTransition ni useDeferredValue para la búsqueda (con 10 usuarios no aportan)
+     ni use() + Suspense para cargar datos sin una caché: los hooks con useEffect +
+     AbortController se quedan. Si ves otro sitio donde una API de React 19 aporte de
+     verdad, propónmelo.
+   - Revisa cómo encaja esto con los casos ya planificados (doble clic = una sola petición,
+     error del POST que no pierde lo escrito, keys únicas) y ajusta los tests.
+
+d) Skill modern-web-guidance: en las fases de UI (P5–P7), consúltala con pnpx antes de
+   escribir formularios y validación, el layout responsive y la accesibilidad. Añade a
+   CLAUDE.md una política de navegadores: features Baseline "Widely available" sin
+   fallback; "Newly available" solo con detección y un fallback simple, sin dependencias
+   nuevas.
+
+e) Añade a CLAUDE.md: React 19 (en formularios, preferencia por actions), la regla de
+   lectura defensiva de localStorage y la regla responsive mobile-first.
+
+Actualiza en el plan las piezas, firmas, tests y commits afectados, renumera si hace falta y
+dime cuántas piezas quedan. Añade a AI_LOG.md una entrada P2b (qué pedí, qué propusiste, qué
+acepté y qué corregí). Enséñame el diff resumido y espera mi OK para el commit
+"docs: revise plan with persistence, responsive layout and React 19 actions".
+```
+
+### P2b - Ajustes antes del commit
+
+**Fecha:** 2026-11-23 10:49 (UTC+03:00)
+
+```text
+OK a la revisión P2b, con estos ajustes antes del commit:
+1. Linter: el plan da por hecho `eslint.config.js` en P3.1. La plantilla actual de Vite trae
+   Oxlint. El plan debe decir: el linter que traiga la plantilla (si es Oxlint,
+   `.oxlintrc.json`, sin añadir ESLint), con reglas de React hooks, TypeScript y jsx-a11y.
+2. Cambio de usuario con un POST pendiente: añade en P6.9 el test
+   `it('stores the post for the original user when switching users while publishing')`.
+   Con el POST retrasado, se cambia a otro usuario antes de que responda: el post no aparece
+   en el nuevo, y al volver al original está. Si para que pase la escritura en storage tiene
+   que usar el userId capturado al enviar (no el del render actual), refléjalo en el plan.
+3. `<title>` por usuario: sí. "Postboard" sin usuario y "{name} · Postboard" con uno
+   seleccionado, con el `<title>` de React 19 y su test. Ponlo en la pieza que corresponda.
+4. isNarrowViewport: el corte de 48rem sale de una constante compartida, con un comentario
+   que diga que coincide con `md` de Tailwind.
+5. Acepto el resto: clave por usuario, el POST que no se cancela, quitar useCreatePost, los
+   errores recalculados en cada envío (anótalo para "qué haría con más tiempo": limpiar el
+   error del campo al editarlo), el doble clic decidido por el test, headingRef como prop y
+   la regla de foco que añadiste.
+Actualiza AI_LOG.md en P2b (acepté y corregí: puntos 1 a 4), enséñame el diff resumido y haz el
+commit "docs: revise plan with persistence, responsive layout and React 19 actions".
+```

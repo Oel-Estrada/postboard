@@ -28,7 +28,7 @@ Commits progresivos que muestren cómo pienso; nunca un único commit con todo.
 ## Stack
 
 - **pnpm** como gestor de paquetes (nunca npm ni yarn).
-- **Vite + React + TypeScript** en modo `strict`.
+- **Vite + React 19 + TypeScript** en modo `strict`.
 - **Tailwind CSS v4** con `@tailwindcss/vite`: `@import "tailwindcss";` en el CSS y sin
   `tailwind.config.js`.
 - **Tests unitarios y de integración:** Vitest, `@testing-library/react`,
@@ -72,6 +72,43 @@ Commits progresivos que muestren cómo pienso; nunca un único commit con todo.
   - `role="status"` / `aria-live` en los indicadores de carga.
 - La búsqueda filtra en el cliente, sin distinguir mayúsculas y quitando espacios.
 - La validación rechaza campos vacíos o que solo contienen espacios.
+
+### React 19
+
+- Las APIs de React 19 se usan donde aportan, sin forzarlas.
+- **Formularios:** se prefieren las actions: `<form action>` con `useActionState`,
+  `useFormStatus` para el estado pendiente y `useOptimistic` para mostrar el resultado al
+  instante.
+- La carga de datos sigue en hooks propios con `useEffect` + `AbortController`. No se usa
+  `use()` + Suspense sin una caché, ni `useTransition`/`useDeferredValue` donde no hacen falta
+  (por ejemplo, para filtrar 10 usuarios).
+
+### localStorage (lectura defensiva)
+
+- El acceso a `localStorage` y todas sus lecturas y escrituras van en `try/catch`: puede no
+  estar disponible, estar lleno o lanzar `SecurityError`.
+- `JSON.parse` siempre protegido, y la forma de los datos se valida con un type guard antes de
+  usarlos. Los datos no válidos se ignoran sin romper la app.
+- Claves con prefijo y versión (`postboard:<nombre>:v1`) para poder cambiar el formato sin
+  leer datos antiguos.
+- Lo guardado se pinta siempre como texto (nunca `dangerouslySetInnerHTML`).
+
+### Responsive, mobile-first
+
+- Los estilos base son los de móvil; los cambios para pantallas grandes van con los prefijos de
+  Tailwind (`md:` en adelante).
+- Áreas táctiles de al menos 44 px y sin scroll horizontal a 320 px de ancho.
+- Si un cambio de vista en móvil oculta lo que tenía el foco, el foco se mueve de forma
+  explícita al nuevo contenido.
+
+### Política de navegadores
+
+- Las features **Baseline «Widely available»** se usan sin fallback.
+- Las **Baseline «Newly available»** solo se usan con detección de la feature y un fallback
+  simple, sin dependencias nuevas.
+- En las fases de UI se consulta la skill `modern-web-guidance` (con `pnpx`) antes de escribir
+  formularios y validación, layout responsive y accesibilidad, y se aplica esta política a lo
+  que recomiende.
 
 ## Idioma
 
