@@ -25,5 +25,7 @@ export const messages = {
   form: {
     titleRequired: 'Enter a title.',
     bodyRequired: 'Enter the post text.',
+    submit: 'Publish post',
+    submitting: 'Publishing…',
   },
 }
