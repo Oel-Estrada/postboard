@@ -1124,3 +1124,58 @@ la medición, los títulos a 400, las animaciones y P7.6 de View Transitions par
 con más tiempo") y prepara el commit `docs: log p7 prompt and ai decisions`. Para antes de ese
 commit.
 ```
+
+## P8 — Tests E2E
+
+**Fecha:** 2026-11-23 20:09 (UTC+03:00)
+
+```text
+Antes de nada: añade al final de docs/prompts.md una sección "## P8 — Tests E2E" con la fecha
+y la hora y este prompt COMPLETO y LITERAL, dentro de un bloque de código, sin resumirlo ni
+corregirlo. Igual que en fases anteriores, añade también, literal y con su hora, cada mensaje
+que te mande durante la fase. Todo eso va en el commit de docs que cierra la fase, con
+AI_LOG.md. Respóndeme en español.
+
+No uses brainstorming ni writing-plans: el plan ya está aprobado en docs/plan.md.
+Usa superpowers:executing-plans (en esta misma sesión, sin subagentes).
+
+Lee CLAUDE.md y docs/plan.md. Ejecuta SOLO la fase P8 (P8.1 a P8.4 y su cierre): 4 E2E, uno
+por flujo, sin repetir lo que ya cubren los unitarios y la integración.
+- Consulta en Context7 la configuración actual de Playwright: webServer, page.route y
+  projects.
+- Instala @playwright/test (si pide scripts de instalación, dime cuáles y espera mi OK). Antes
+  de descargar Chromium (`pnpm exec playwright install chromium`), avísame y espera mi OK.
+- El servidor de los E2E: en vez de `pnpm dev`, usa el build de producción
+  (`pnpm build && pnpm preview` en un puerto fijo con --strictPort). Así se prueba lo que se
+  entrega y no actúa el doble efecto de StrictMode de desarrollo. Anótalo en AI_LOG como
+  desviación del plan.
+- mockApi: aborta todo lo que no vaya a localhost y sirve jsonplaceholder con los datos de
+  src/test/fixtures.ts. Para el error de P8.3, NO uses "falla una vez" contando peticiones:
+  usa un interruptor que el test apaga justo antes de pulsar "Try again", para que el
+  resultado no dependa de cuántas peticiones haga la app.
+- Los specs importan los textos de src/i18n/messages.ts; ningún literal de la interfaz.
+- Que typecheck y lint cubran también e2e/ y playwright.config.ts (si hace falta un tsconfig
+  propio para e2e, añádelo a las referencias). Vitest no recoge e2e/ y Playwright no recoge
+  src/: compruébalo.
+- Como el comportamiento ya existe, el test pasará a la primera. En lugar del rojo, rompe una
+  vez la app a propósito para cada spec y enséñame que ese spec falla (restaura desde copia).
+- Un commit por spec (el primero con la configuración). Si las cuatro puertas y pnpm test:e2e
+  pasan, haz los commits sin esperarme; para si algo falla o es intermitente (ejecuta la suite
+  E2E 3 veces seguidas antes de cada commit).
+Termina con superpowers:verification-before-completion (pnpm test, test:e2e, typecheck, lint
+y build, con la salida real). Al cerrar la fase, actualiza AI_LOG.md (con la línea
+**Duración:** inicio–fin, con la hora del commit de cierre) y prepara el commit de cierre
+`docs: log p8 prompt and ai decisions`; para antes de hacerlo.
+```
+
+### P8 - OK a descargar solo el headless shell
+
+**Fecha:** 2026-11-23 20:21 (UTC+03:00)
+
+```text
+OK a la descarga, pero solo del headless shell: `pnpm exec playwright install --only-shell
+chromium` (los E2E van sin interfaz; el Chrome completo solo hace falta para --headed o --ui).
+Comprueba que los tests corren con él y anótalo en AI_LOG; en P9 el README usará el mismo
+comando. Bien el reuseExistingServer: false y el retries: 0. Sigue con la fase como dice el
+prompt.
+```

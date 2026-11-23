@@ -989,3 +989,153 @@ para el análisis de P7.6). Influyeron así:
   paleta y su contraste comprobado.
 - **Revisar el estilo con el modo de alto contraste de Windows** (`forced-colors`): la pestaña y
   la barra de acento dependen de fondos y de un pseudo-elemento.
+
+## P8 — Tests E2E
+
+**Fecha:** 2026-11-23 20:09 (UTC+03:00)
+
+**Duración:** 20:09–20:49 (≈40 min)
+
+**Qué pedí:** ejecutar solo la fase P8 del plan (P8.1 a P8.4 y su cierre) con
+`superpowers:executing-plans`, en la misma sesión y sin subagentes: 4 E2E, uno por flujo, sin
+repetir lo que ya cubren los unitarios y la integración.
+
+- Consultar en Context7 la configuración actual de Playwright (`webServer`, `page.route` y
+  `projects`).
+- Instalar `@playwright/test`, avisando si pedía scripts de instalación, y no descargar Chromium
+  sin mi OK.
+- Servir los E2E con el build de producción (`pnpm build && pnpm preview` en un puerto fijo con
+  `--strictPort`) en vez de `pnpm dev`.
+- `mockApi` que aborta todo lo que no vaya a `localhost` y sirve JSONPlaceholder con
+  `src/test/fixtures.ts`. Para el error de P8.3, un interruptor que el test apaga justo antes de
+  «Try again», y no un «falla una vez» que cuente peticiones.
+- Textos importados de `messages`; typecheck y lint cubriendo `e2e/` y `playwright.config.ts`;
+  Vitest sin `e2e/` y Playwright sin `src/`, comprobado.
+- En vez del rojo, romper la app a propósito una vez por spec y enseñar que ese spec falla,
+  restaurando desde copia.
+- Un commit por spec (el primero con la configuración), sin esperarme si pasan las cuatro puertas
+  y `pnpm test:e2e` tres veces seguidas.
+
+Durante la fase mandé un mensaje más (literal en `docs/prompts.md`): descargar solo el headless
+shell.
+
+**Qué propuso la IA:**
+
+- **`playwright.config.ts`:**
+  - Solo `e2e/` y solo el proyecto `chromium`, con `reporter: 'list'` y
+    `trace: 'retain-on-failure'`.
+  - Servidor: `pnpm build && pnpm preview --port 4173 --strictPort`.
+  - **`reuseExistingServer: false`** (el plan decía `!process.env.CI`): un preview ya levantado
+    podría estar sirviendo un build viejo, y así el error es explícito si el 4173 está ocupado.
+  - **`retries: 0`**, para que un E2E intermitente falle en vez de pasar al segundo intento.
+- **`tsconfig.e2e.json`,** añadido a las referencias de `tsconfig.json`, con
+  `moduleResolution: bundler` (como `src/`, porque los specs importan `messages` y `fixtures`) y
+  `DOM` en `lib` para los `page.evaluate`.
+- **`e2e/mockApi.ts`:**
+  - Registra primero la ruta que aborta todo lo que no vaya a `localhost`. Context7 confirma que,
+    si varias rutas coinciden, Playwright prueba primero la última registrada, así que el
+    bloqueo queda como último recurso.
+  - Después sirve `GET /users`, `GET /posts?userId=` y `POST /posts` (201, sin guardar nada y
+    siempre con `id: 101`, como la API real). Las rutas se comprueban con funciones sobre la
+    URL, no con globs, para no depender de cómo trata el glob el `?` de la query.
+  - Devuelve el interruptor `setUsersFailing(failing)`.
+- **Specs:**
+  - **Búsqueda:** `'  clem'` deja 2 usuarios; Clementine muestra el estado vacío; Leanne muestra
+    sus 2 posts y el `<title>` con `pageTitle`.
+  - **Persistencia:** espera a «Post published.» antes de recargar, para no recargar con el post
+    aún pendiente. Tras recargar comprueba 3 artículos, el nuevo arriba y sin `aria-busy`.
+  - **Errores:** alerta de `loadError`, `setUsersFailing(false)`, «Try again» y la lista
+    completa.
+  - **Móvil, a 320×640:**
+    - Sin scroll horizontal en la lista y en el detalle.
+    - El foco va al título del detalle y vuelve a la ficha.
+    - La búsqueda se conserva.
+    - La lista se busca con `includeHidden: true`, para que `toBeHidden` compruebe la misma lista
+      y no la siguiente visible.
+- **Un spec que pasa a la primera no prueba nada,** así que cada uno se vio fallar con la app rota
+  a propósito (tabla abajo).
+
+**Qué acepté:** `reuseExistingServer: false` y `retries: 0`, el `tsconfig.e2e.json`, el diseño de
+`mockApi` con el interruptor y los cuatro specs.
+
+**Qué corregí o rechacé (y por qué):**
+
+1. **Solo el headless shell.** La IA iba a pedir `pnpm exec playwright install chromium`, que
+   descarga Chrome for Testing (207 MB) y Chrome Headless Shell (123 MB). Pedí solo
+   `pnpm exec playwright install --only-shell chromium`: los E2E van sin interfaz y el Chrome
+   completo solo hace falta para `--headed` o `--ui`. Se descargó solo
+   `chromium_headless_shell-1255`, y **los cuatro specs corren con él**: el Chromium 1255
+   completo no está instalado, así que no pueden haber usado otro navegador. En P9, el README
+   usará este mismo comando.
+
+**Context7 (Playwright):**
+
+- **`page.route`:** si una petición coincide con varias rutas, gana la última registrada;
+  `route.fallback()` pasa a las anteriores, y `fulfill` y `abort` no siguen la cadena.
+- **`webServer`:** `command`, `url` (`port` está obsoleto), `reuseExistingServer` y `timeout`
+  (60 s por defecto; aquí 120 s porque el comando incluye el build).
+- **`projects`:** `devices['Desktop Chrome']`, y el viewport por spec con `test.use`.
+
+**Comprobaciones de configuración:**
+
+- **`@playwright/test` 1.65.1** añade 3 paquetes (`@playwright/test`, `playwright` y
+  `playwright-core`) y **ninguno tiene scripts de instalación**: lo comprobé en sus
+  `package.json`, y pnpm deja `pendingBuilds: []`. No hubo que tocar `allowBuilds`.
+- **Typecheck y lint cubren `e2e/` y `playwright.config.ts`:** un error de tipos temporal en
+  cada uno hizo fallar `pnpm typecheck`, y un `debugger` en `e2e/` hizo fallar `pnpm lint`. Se
+  borraron después.
+- **Vitest no recoge nada de `e2e/`** (0 archivos en `vitest list`) y **Playwright solo recoge
+  `e2e/`** (`--list`: 4 tests en 4 archivos).
+
+**La app rota a propósito, una vez por spec** (restaurada siempre desde copia y comprobada sin
+diff):
+
+| Spec | Rotura | Fallo |
+| --- | --- | --- |
+| `search` | `filterUsersByName` sin `trim()` | `toHaveCount(2)`: recibió 0 |
+| `persistence` | `writeCreatedPosts` guarda bajo la clave + `':lost'` | tras recargar, `toHaveCount(3)`: recibió 2 |
+| `errors` | `retry` no incrementa el intento (no vuelve a pedir) | `toHaveCount(4)`: recibió 0 |
+| `mobile` | `App` no mueve el foco al detalle en móvil | `toBeFocused()`: `inactive` |
+
+**Desviaciones del plan:**
+
+- **Servidor de los E2E:** `pnpm build && pnpm preview --port 4173 --strictPort` en vez de
+  `pnpm dev --port 5173`. Se prueba lo que se entrega y no actúa el doble efecto de StrictMode
+  de desarrollo. Decisión mía.
+- **`reuseExistingServer: false`** en vez de `!process.env.CI` (ver arriba).
+- **Error de P8.3:** un interruptor (`setUsersFailing`) en vez de que `GET /users` falle una vez
+  contando peticiones. Así el resultado no depende de cuántas peticiones haga la app. Decisión
+  mía.
+- **Solo el headless shell de Chromium** (`--only-shell`) en vez de `playwright install
+  chromium`.
+- **Archivo de más:** `tsconfig.e2e.json`, para que `tsc -b` compruebe `e2e/` y
+  `playwright.config.ts`.
+
+**Incidentes:**
+
+- **La primera rotura de P8.2 no compilaba.** Quitar el `setItem` dejaba `storage` sin usar,
+  `tsc` fallaba y el `webServer` no llegaba a arrancar. Ese fallo no probaba nada sobre el spec,
+  así que se descartó y se rompió de otra forma que sí compila (la clave + `':lost'`).
+
+**Verificación final** (`superpowers:verification-before-completion`, salida real):
+
+- `pnpm test`: 23 archivos y 50 tests, exit 0.
+- `pnpm test:e2e`: 4 de 4 en 7,4 s, exit 0.
+- `pnpm typecheck`, `pnpm lint` y `pnpm build`: exit 0.
+- Antes de cada uno de los 4 commits, las cuatro puertas en verde y la suite E2E tres veces
+  seguidas en verde. Ninguna ejecución intermitente.
+- Los puertos 4173 y 5173 quedan libres. `test-results/` lo ignora git.
+- **Revisión final:** auto-revisión, sin subagentes, por indicación mía. Sin hallazgos Critical
+  ni Important.
+
+**Menores que quedan anotados:**
+
+- `search.spec.ts` toma la lista de usuarios como la primera lista de la página. Si la
+  maquetación pusiera otra lista antes, habría que acotarla.
+- `mockApi` solo deja pasar `localhost`: si el `baseURL` pasara a `127.0.0.1`, se abortaría
+  también la app. Fallaría de forma ruidosa, no en silencio.
+
+**Qué haría con más tiempo:**
+
+- Ejecutar los E2E en CI (con `forbidOnly` ya activo con `CI`) y subir el informe y las trazas
+  de los fallos.
