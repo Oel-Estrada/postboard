@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
+import { PostsPanel } from './components/PostsPanel'
 import { UsersPanel } from './components/UsersPanel'
 import { messages } from './i18n/messages'
 import { isNarrowViewport } from './lib/isNarrowViewport'
@@ -62,9 +63,12 @@ function App() {
             </button>
           )}
           {selectedUser ? (
-            <h2 ref={detailHeadingRef} tabIndex={-1}>
-              {selectedUser.name}
-            </h2>
+            // The key gives each user a fresh panel: form, optimistic posts and requests.
+            <PostsPanel
+              key={selectedUser.id}
+              user={selectedUser}
+              headingRef={detailHeadingRef}
+            />
           ) : (
             <p>{messages.app.selectUser}</p>
           )}
