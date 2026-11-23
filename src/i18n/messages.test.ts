@@ -6,5 +6,6 @@ import { messages } from './messages'
 describe('messages', () => {
   it('interpolates data into the texts that need it', () => {
     expect(messages.users.usernameHandle('Bret')).toBe('@Bret')
+    expect(messages.users.noUsersMatch('zzz')).toBe('No users match "zzz".')
   })
 })

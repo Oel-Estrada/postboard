@@ -15,5 +15,8 @@ export const messages = {
   users: {
     searchLabel: 'Search users',
     usernameHandle: (username: string) => `@${username}`,
+    loading: 'Loading users…',
+    loadError: "Couldn't load users.",
+    noUsersMatch: (query: string) => `No users match "${query}".`,
   },
 }
