@@ -8,6 +8,8 @@
 export const messages = {
   app: {
     title: 'Postboard',
+    selectUser: 'Select a user to see their posts.',
+    backToUsers: 'Back to users',
   },
   common: {
     tryAgain: 'Try again',
