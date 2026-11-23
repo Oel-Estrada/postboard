@@ -9,4 +9,7 @@ export const messages = {
   app: {
     title: 'Postboard',
   },
+  users: {
+    searchLabel: 'Search users',
+  },
 }
