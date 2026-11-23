@@ -186,7 +186,8 @@ Se aplican a todas las piezas y salen de `CLAUDE.md`:
   y muy pocos E2E. Cada test defiende un comportamiento distinto; nada de variaciones del mismo
   caso ni de lo trivial. Los errores HTTP, de red y la cancelación se prueban una sola vez, en
   `request`.
-- Los tests no tocan nunca la red real: MSW con `onUnhandledRequest: 'error'` en Vitest y
+- Los tests no tocan nunca la red real: MSW con `onUnhandledFrame: 'error'` en Vitest (MSW 3
+  renombró así la antigua `onUnhandledRequest`) y
   `page.route` con bloqueo de todo lo externo en Playwright.
 - Vitest no ejecuta `e2e/` y Playwright no ejecuta `src/`.
 - Commits atómicos con Conventional Commits, en inglés y sin push: cada commit hace una sola
@@ -497,10 +498,12 @@ layout.
 ### P3.3 Servidor MSW para los tests
 
 - **Archivos:** `package.json`, `pnpm-lock.yaml`, `src/test/server.ts`, `src/test/handlers.ts`
-  (vacío por ahora: `export const handlers = []`), `src/test/setup.ts` y
+  (vacío por ahora: `export const handlers: AnyHandler[] = []`), `src/test/setup.ts` y
   `src/test/server.test.ts`.
-- **Pasos:** instalar `msw`. En `setup.ts`: `beforeAll(() => server.listen({ onUnhandledRequest:
-  'error' }))`, `afterEach(() => server.resetHandlers())` y `afterAll(() => server.close())`.
+- **Pasos:** instalar `msw` (v3). En `setup.ts`: `beforeAll(() => server.listen({
+  onUnhandledFrame: 'error' }))`, `afterEach(() => server.resetHandlers())` y
+  `afterAll(() => server.close())`. En MSW 3, `onUnhandledFrame` sustituye a
+  `onUnhandledRequest` y también cubre WebSocket; con `'error'` la petición se rechaza igual.
 - **Test (`server.test.ts`):** `it('rejects requests that have no handler')`. Comprueba que
   `fetch('https://jsonplaceholder.typicode.com/unhandled')` es rechazado **y** que MSW la
   registra como no manejada (evento `request:unhandled` de `server.events`). Sin lo segundo, un
