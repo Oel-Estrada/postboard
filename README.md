@@ -143,24 +143,30 @@ ni siquiera una conexión (como el `preconnect` a la API) llega a salir.
 ## Rendimiento y Lighthouse
 
 Lighthouse 13.6.0 sobre el build de producción (`pnpm preview`), con la API real y el
-estrangulamiento simulado de Lighthouse en móvil. En móvil, dos pasadas:
+estrangulamiento simulado de Lighthouse en móvil. En móvil, tres pasadas tras los arreglos:
 
 | | Móvil | Escritorio |
 | --- | --- | --- |
 | Rendimiento | 97–98 | 100 |
-| LCP | 2,5 s | 0,2 s |
+| LCP | 2,4–2,5 s | 0,2 s |
 | CLS | 0 | 0 |
 | TBT | 10–60 ms | 0 ms |
 | Accesibilidad | 100 | 100 |
 | Buenas prácticas | 100 | 100 |
 | SEO | 100 | 100 |
+| Agentic Browsing | 100 | 100 |
 
 - **Qué se arregló tras la primera medición:** un `robots.txt` (sin él, el fallback de la SPA
   devolvía `index.html` y el SEO daba 91) y el `preconnect` a la API (LCP en móvil de 2,6 a
-  2,5 s; Lighthouse estimaba más ahorro del que dio).
+  2,4–2,5 s; Lighthouse estimaba más ahorro del que dio).
+- **404 en las rutas que no existen:** con una sola página y sin router, Vite usa
+  `appType: 'mpa'`, así que `dev` y `preview` ya no responden a cualquier ruta con `index.html`
+  y un 200.
 - **El LCP en móvil es el nombre de un usuario** de la lista, así que depende de lo que tarde
   JSONPlaceholder. Lo pendiente está en «Qué haría con más tiempo».
-- La categoría «Agentic Browsing» de Lighthouse 13 (`llms.txt`) no aplica a esta app.
+- **Agentic Browsing** (nueva en Lighthouse 13): hay un `/llms.txt` según llmstxt.org que resume
+  la app y enlaza al README y a AI_LOG. No hay `ard.json`: ARD cataloga recursos para agentes
+  (MCP, A2A, skills) y la app no tiene ninguno; con el 404, su auditoría queda «no aplicable».
 
 ## Qué haría con más tiempo
 
@@ -174,7 +180,11 @@ estrangulamiento simulado de Lighthouse en móvil. En móvil, dos pasadas:
    propio. Aquí usé `fetch` y hooks propios a propósito, para enseñar cancelación, carreras y StrictMode.
 4. **CI y despliegue:** lint, typecheck, tests y E2E en cada cambio, con el informe y las trazas de
    los fallos, para que nada roto llegue a la rama principal.
-5. **Selector de tema** claro, oscuro o sistema, guardado en `localStorage`, y temas propios con
+5. **Monitorización de errores** con Sentry o equivalente: cada error con su contexto y los source
+   maps, alertas por email o Slack y sin datos personales en los reportes. Un `ErrorBoundary` (hoy
+   no hay ninguno) mostraría una pantalla de error con «Reload» en vez de dejarla en blanco y lo
+   reportaría, igual que los errores de carga de la API.
+6. **Selector de tema** claro, oscuro o sistema, guardado en `localStorage`, y temas propios con
    `[data-theme]`: es barato porque todos los colores ya son variables CSS.
 
 **Producto**
@@ -227,8 +237,6 @@ estrangulamiento simulado de Lighthouse en móvil. En móvil, dos pasadas:
 
 **Código, tests y herramientas**
 
-- **Registrar en consola los errores de carga,** porque un cambio de forma de la API hoy no deja
-  rastro.
 - **`useUserPosts` de vuelta a `loading` al cambiar de usuario,** aunque no se remonte el panel.
 - **El arranque en frío de los tests:** medir con `maxWorkers`, `isolate: false` o un entorno más
   ligero que jsdom, en vez de subir tiempos de espera.
