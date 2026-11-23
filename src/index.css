@@ -69,4 +69,46 @@
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
   }
+
+  /*
+   * Motion, only for people who have not asked for less of it. @starting-style
+   * is Baseline newly available: browsers without it skip the entry and show
+   * the new post at once, which is the fallback.
+   */
+  @media (prefers-reduced-motion: no-preference) {
+    /* Hover, press and focus: colours fade and the focus ring settles in. */
+    :where(button, input, textarea) {
+      transition-property: background-color, border-color, color, opacity, outline-offset;
+      transition-duration: 150ms;
+      transition-timing-function: ease-out;
+    }
+
+    /* The folder tab and its monogram settle a little slower than a hover. */
+    :where([aria-current="true"], li > button > span[aria-hidden="true"]) {
+      transition-property: background-color, border-color, color;
+      transition-duration: 200ms;
+      transition-timing-function: ease-out;
+    }
+
+    /* The selected user's accent bar grows from its middle. */
+    [aria-current="true"]::before {
+      transition: scale 200ms ease-out;
+
+      @starting-style {
+        scale: 1 0;
+      }
+    }
+
+    /* Only the new (pending) post slides in; the loaded ones do not move. */
+    article[aria-busy="true"] {
+      transition:
+        opacity 200ms ease-out,
+        translate 200ms ease-out;
+
+      @starting-style {
+        opacity: 0;
+        translate: 0 -0.5rem;
+      }
+    }
+  }
 }
