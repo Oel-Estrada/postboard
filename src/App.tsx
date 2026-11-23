@@ -63,7 +63,24 @@ function App() {
         </div>
         <div className={mobileView === 'detail' ? 'block' : 'hidden md:block'}>
           {mobileView === 'detail' && (
-            <button type="button" onClick={handleBackToUsers} className="min-h-11 md:hidden">
+            <button
+              type="button"
+              onClick={handleBackToUsers}
+              className="mb-4 inline-flex min-h-11 cursor-pointer items-center gap-2 border border-muted bg-card px-4 font-medium hover:bg-paper md:hidden"
+            >
+              {/* Decorative: the text already says where it goes. */}
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 16 16"
+                className="size-4 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M10 3 5 8l5 5" />
+              </svg>
               {messages.app.backToUsers}
             </button>
           )}

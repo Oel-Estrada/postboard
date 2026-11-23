@@ -60,6 +60,8 @@
   body {
     background-color: var(--color-paper);
     color: var(--color-ink);
+    /* Long words (titles, names) wrap instead of scrolling the page sideways at 320px. */
+    overflow-wrap: break-word;
   }
 
   /* Keyboard focus only; accent on paper and on card is above 3:1. */

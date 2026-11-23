@@ -67,7 +67,8 @@ export function PostsPanel({ user, headingRef }: PostsPanelProps) {
           <h2 ref={headingRef} tabIndex={-1} className="font-serif text-2xl font-semibold">
             {user.name}
           </h2>
-          <p className="text-sm text-muted">{user.email}</p>
+          {/* An email has no spaces: it may break anywhere rather than widen the page. */}
+          <p className="text-sm text-muted wrap-anywhere">{user.email}</p>
           <p className="text-sm text-muted">{user.company.name}</p>
         </div>
       </div>
