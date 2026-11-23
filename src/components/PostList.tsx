@@ -47,7 +47,7 @@ export function PostList({ posts }: PostListProps) {
               post.pending ? 'border-dashed border-muted text-muted' : 'border-rule'
             }`}
           >
-            <h4 className="font-serif text-xl font-medium first-letter:uppercase">{post.title}</h4>
+            <h4 className="font-serif text-xl font-normal first-letter:uppercase">{post.title}</h4>
             <p className="mt-1 max-w-[65ch]">{post.body}</p>
             {post.pending && (
               <p className="mt-2 text-sm font-medium">{messages.posts.pending}</p>

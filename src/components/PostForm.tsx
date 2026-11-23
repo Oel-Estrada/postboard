@@ -18,7 +18,7 @@ interface PostFormState {
 const labelClass = 'mb-1 block text-sm font-medium'
 // The border is muted, not rule: an input's edge needs 3:1 (WCAG 1.4.11).
 const fieldClass =
-  'block min-h-11 w-full border border-muted bg-card px-3 py-2 aria-[invalid=true]:border-danger'
+  'block min-h-11 w-full border border-muted bg-card px-3 py-2 aria-[invalid=true]:border-danger placeholder:text-muted'
 const fieldErrorClass = 'mt-1 text-sm text-danger'
 
 const emptyValues: PostFormValues = { title: '', body: '' }
@@ -80,6 +80,7 @@ export function PostForm({ onPublish }: PostFormProps) {
           id={titleId}
           name="title"
           required
+          placeholder={messages.form.titlePlaceholder}
           defaultValue={state.submitted.title}
           aria-invalid={state.errors.title ? true : undefined}
           aria-describedby={state.errors.title ? `${titleId}-error` : undefined}
@@ -100,6 +101,7 @@ export function PostForm({ onPublish }: PostFormProps) {
           id={bodyId}
           name="body"
           required
+          placeholder={messages.form.bodyPlaceholder}
           defaultValue={state.submitted.body}
           aria-invalid={state.errors.body ? true : undefined}
           aria-describedby={state.errors.body ? `${bodyId}-error` : undefined}
