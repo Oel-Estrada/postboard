@@ -19,6 +19,8 @@ afterEach(() => {
   // Vitest globals are off, so Testing Library cannot register its own cleanup.
   cleanup()
   server.resetHandlers()
+  // Created posts persist in localStorage; each test starts without them.
+  localStorage.clear()
 })
 
 afterAll(() => {
