@@ -164,57 +164,81 @@ estrangulamiento simulado de Lighthouse en móvil. En móvil, dos pasadas:
 
 ## Qué haría con más tiempo
 
+**Por dónde empezaría**
+
+1. **Backend propio con persistencia:** crear, editar y borrar posts de verdad (JSONPlaceholder no
+   guarda nada), y likes y dislikes con su contador optimista con `useOptimistic`, como al publicar.
+2. **React Router en modo framework:** URL por usuario («Atrás» en el móvil volvería a la lista) y
+   SSG o SSR, para que el contenido se indexe: el SEO técnico da 100, pero hoy solo existe tras el JS.
+3. **TanStack Query:** caché, reintentos, deduplicación y mutaciones optimistas con menos código
+   propio. Aquí usé `fetch` y hooks propios a propósito, para enseñar cancelación, carreras y StrictMode.
+4. **CI y despliegue:** lint, typecheck, tests y E2E en cada cambio, con el informe y las trazas de
+   los fallos, para que nada roto llegue a la rama principal.
+5. **Selector de tema** claro, oscuro o sistema, guardado en `localStorage`, y temas propios con
+   `[data-theme]`: es barato porque todos los colores ya son variables CSS.
+
 **Producto**
 
-- **URL por usuario** con un router: así el botón «Atrás» del móvil volvería a la lista en vez de
-  salir de la app. Y **sincronizar los posts entre pestañas** con el evento `storage`.
-- **Ver un post que termina de publicarse después de volver a su usuario:** el panel nuevo ya leyó
-  el storage y no lo ve hasta el siguiente montaje. Se resolvería con `useSyncExternalStore` sobre
-  un pequeño almacén con suscripción.
-- **Publicar sin contexto seguro:** un id local con `crypto.getRandomValues`, que sí existe fuera
-  de HTTPS, en vez de `crypto.randomUUID()` (ver el aviso de arriba).
-- **Otros idiomas:** una librería de i18n sobre `messages` (cada idioma con
-  `satisfies typeof messages`) y un selector.
+- **Sincronizar los posts entre pestañas** con el evento `storage`: hoy otra pestaña no ve lo
+  publicado hasta recargar.
+- **Ver un post que acaba de publicarse tras volver a su usuario:** el panel ya leyó el storage;
+  lo resolvería `useSyncExternalStore` sobre un almacén con suscripción.
+- **Publicar sin contexto seguro:** un id con `crypto.getRandomValues`, que existe fuera de HTTPS,
+  en vez de `crypto.randomUUID()` (ver el aviso de arriba).
+- **Paginación o scroll infinito** cuando haya volumen (hoy son 10 posts por usuario), con
+  `IntersectionObserver` y un botón «Cargar más» como alternativa accesible.
+- **i18n:** una librería sobre `messages` (cada idioma con `satisfies typeof messages`), español,
+  plurales con `Intl.PluralRules` («Posts (1)») y un selector.
+- **Analítica:** Plausible o Umami (sin cookies) o GA4 con consentimiento, para uso y conversiones,
+  y Core Web Vitals reales con `web-vitals`, porque Lighthouse solo mide en laboratorio.
 
 **Formulario y posts**
 
-- Limpiar el error de un campo al editarlo, y que «Post published.» desaparezca al empezar el
-  siguiente post.
-- Bloquear los campos mientras se publica (`<fieldset disabled>`): si el POST falla, lo editado
+- **Limpiar el error de un campo al editarlo,** y que «Post published.» desaparezca al empezar el
+  siguiente post: hoy ambos se quedan hasta el siguiente envío.
+- **Bloquear los campos mientras se publica** (`<fieldset disabled>`): si el POST falla, lo editado
   durante la espera se pierde.
-- **«Posts (N)» fiable:** muestra 0 mientras cargan los posts de la API y, si su carga falla, solo
-  cuenta los creados.
-- `z.uuid()` para la `key` de los posts guardados, para que un storage manipulado no pueda repetir
-  claves.
+- **«Posts (N)» fiable:** hoy muestra 0 mientras cargan los posts de la API y, si su carga falla,
+  solo cuenta los creados.
+- **`z.uuid()` para la `key` de los posts guardados,** para que un storage manipulado no pueda
+  repetir claves.
 
-**Accesibilidad**
+**Interfaz y accesibilidad**
 
 - **Foco al volver con un filtro activo:** si el usuario elegido ya no está en la lista filtrada,
   «Back to users» deja el foco en `body`.
-- **Avisos de carga más fiables:** un contenedor `role="status"` fijo por panel en el que solo
-  cambie el texto, porque una región viva que se inserta ya con texto no siempre se anuncia.
-- **Una revisión con el modo de alto contraste de Windows** (`forced-colors`): la pestaña y la
-  barra de acento dependen de fondos y de un pseudo-elemento.
-- **View Transitions** entre la lista y el detalle, con la API nativa, detección y fallback, sin
-  tocar la gestión del foco.
+- **Avisos de carga más fiables:** un `role="status"` fijo por panel en el que solo cambie el
+  texto, porque una región viva que aparece ya con texto no siempre se anuncia.
+- **Revisar el modo de alto contraste de Windows** (`forced-colors`): la pestaña y la barra de
+  acento dependen de fondos y de un pseudo-elemento.
+- **Animaciones con View Transitions:** el avatar «viajando» de la ficha a la cabecera del detalle,
+  con detección y fallback, `prefers-reduced-motion` y sin tocar la gestión del foco.
 
 **Rendimiento**
 
-- **`zod/mini`:** la medición dio +4,8 kB gzip frente a +23,8 kB de la API clásica, y es casi todo
-  el JS sin usar que marca Lighthouse (53 KiB).
-- **El CSS bloquea el primer pintado** (5 KB, unos 150 ms estimados en móvil): meter en el HTML el
-  CSS crítico pide cambiar el build.
-- **Bajar más el LCP en móvil:** pedir `GET /users` antes de montar React, en vez de esperar al JS.
+- **`zod/mini`:** +4,8 kB gzip frente a +23,8 kB de la API clásica; es casi todo el JS sin usar que
+  marca Lighthouse (53 KiB).
+- **Code splitting con `React.lazy` por ruta** cuando haya router; hoy, con una sola pantalla, lo
+  que más pesa es zod.
+- **CSS crítico en el HTML:** el CSS bloquea el primer pintado (5 KB, unos 150 ms estimados en
+  móvil), y meterlo en el HTML pide cambiar el build.
+- **Bajar más el LCP en móvil** pidiendo `GET /users` antes de montar React, en vez de esperar al
+  JS.
 
-**Código y tests**
+**Código, tests y herramientas**
 
-- Registrar en consola los errores de carga (un cambio de forma de la API hoy no deja rastro), y
-  que `useUserPosts` vuelva a `loading` al cambiar de usuario aunque no se remonte el panel.
-- **El arranque en frío de los tests:** medir con `maxWorkers` limitado, `isolate: false` o un
-  entorno más ligero que jsdom, en vez de subir tiempos de espera.
-- Tests para el fallback de `isNarrowViewport` sin `matchMedia` y para el scroll horizontal a
-  320px con posts largos; la **cobertura de tests** y los **E2E en CI**, con el informe y las
-  trazas de los fallos.
+- **Registrar en consola los errores de carga,** porque un cambio de forma de la API hoy no deja
+  rastro.
+- **`useUserPosts` de vuelta a `loading` al cambiar de usuario,** aunque no se remonte el panel.
+- **El arranque en frío de los tests:** medir con `maxWorkers`, `isolate: false` o un entorno más
+  ligero que jsdom, en vez de subir tiempos de espera.
+- **Más tests y cobertura:** el fallback de `isNarrowViewport` sin `matchMedia`, el scroll
+  horizontal a 320px con posts largos y un informe de cobertura.
+- **Linter y formato más estrictos:** más categorías de Oxlint, reglas con información de tipos
+  (promesas sin esperar), un formateador y hooks de pre-commit con las cuatro puertas.
+- **Desarrollo con IA a medida del proyecto:** skills y subagentes propios en `.claude/` (una skill
+  de «pieza con TDD y mutaciones», un revisor con las reglas de CLAUDE.md) y hooks de Claude Code
+  que pasen las cuatro puertas antes de cada commit.
 
 ## Cómo usé la IA
 
@@ -270,5 +294,5 @@ duración: salen de la hora de inicio de la fase siguiente.
 | P7 — Pulido visual | 18:32–20:09 | 97 |
 | P8 — Tests E2E | 20:09–20:49 | 40 |
 | P9 — README y verificación | 20:49–21:37 | 48 |
-| P10 — Retoques de diseño y Lighthouse | 21:49–22:28 | 39 |
-| **Total** | | **735 (12 h 15 min)** |
+| P10 — Retoques de diseño y Lighthouse | 21:49–22:34 | 45 |
+| **Total** | | **741 (12 h 21 min)** |
