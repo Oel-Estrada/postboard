@@ -38,6 +38,10 @@ function App() {
 
   return (
     <>
+      {/* React 19 hoists <title> to <head>; it needs a single string child. */}
+      <title>
+        {selectedUser ? messages.app.pageTitle(selectedUser.name) : messages.app.title}
+      </title>
       <header className="px-4 py-3">
         <h1>{messages.app.title}</h1>
       </header>

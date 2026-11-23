@@ -8,6 +8,7 @@
 export const messages = {
   app: {
     title: 'Postboard',
+    pageTitle: (name: string) => `${name} · Postboard`,
     selectUser: 'Select a user to see their posts.',
     backToUsers: 'Back to users',
   },

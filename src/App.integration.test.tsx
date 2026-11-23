@@ -38,4 +38,19 @@ describe('App', () => {
     expect(screen.getByRole('button', { current: true })).toHaveAccessibleName(ervinButtonName)
     expect(screen.getByRole('button', { current: true })).toHaveFocus()
   })
+
+  // Without a matchMedia stub this runs as desktop, through isNarrowViewport's fallback.
+  it('shows the selected user in the page title', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    expect(document.title).toBe(messages.app.title)
+
+    const ervinButton = await screen.findByRole('button', { name: ervinButtonName })
+    await user.click(ervinButton)
+
+    expect(document.title).toBe(messages.app.pageTitle(ervin.name))
+    // On desktop the list stays visible, so focus stays on the chosen user.
+    expect(ervinButton).toHaveFocus()
+  })
 })
