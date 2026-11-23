@@ -579,3 +579,186 @@ En la entrada de P4 de AI_LOG, con su **Duración:**, que no falte:
 ```text
 Usa la hora del commit como fin, igual que en P3. OK al commit de cierre de P4.
 ```
+
+## P5 — Usuarios, búsqueda y layout
+
+**Fecha:** 2026-11-23 13:28 (UTC+03:00)
+
+```text
+Antes de nada: añade al final de docs/prompts.md una sección "## P5 — Usuarios, búsqueda y
+layout" con la fecha y la hora y este prompt COMPLETO y LITERAL, dentro de un bloque de código,
+sin resumirlo ni corregirlo. Igual que en P3 y P4, añade también, literal y con su hora, cada
+mensaje que te mande durante la fase. Todo eso va en el commit de docs que cierra la fase, con
+AI_LOG.md. Respóndeme en español.
+
+No uses brainstorming ni writing-plans: el plan ya está aprobado en docs/plan.md.
+
+Lee CLAUDE.md y docs/plan.md. Ejecuta SOLO la fase P5 (P5.1 a P5.11 y su cierre) con
+superpowers:executing-plans (en esta misma sesión, sin subagentes) y
+superpowers:test-driven-development: por cada pieza, primero el test en rojo (enséñame que
+falla, sin tocar la red real), luego el código mínimo, luego refactor. Un commit por pieza,
+con su test y solo con los archivos de la pieza. Como en P4: si el rojo es solo "falta el
+módulo", comprueba con mutaciones que cada test falla por su propio motivo, y restaura siempre
+desde copias, nunca con git checkout.
+Tests: los del plan (pirámide; no añadas otros sin decírmelo; los de integración en
+*.integration.test.tsx). Textos solo desde src/i18n/messages.ts. AsyncState entra en
+src/types.ts en P5.2, su primer uso.
+Antes de escribir UI, consulta la skill modern-web-guidance con las búsquedas que indica el
+plan para esta fase y aplica la política de navegadores de CLAUDE.md; anota en AI_LOG qué guía
+influyó y en qué. Consulta en Context7 lo que dependa de librerías: renderHook de Testing
+Library, la opción { once: true } de los handlers de MSW 3 y el soporte de <title> de React 19.
+En cada pieza, enséñame el rojo y la salida real de pnpm test, typecheck, lint y build, y
+espera mi OK antes de cada commit. Termina con superpowers:verification-before-completion.
+Al cerrar la fase, actualiza AI_LOG.md (con la línea **Duración:** inicio–fin, con la hora del
+commit de cierre) y prepara el commit de cierre `docs: log p5 prompt and ai decisions`; para
+antes de hacerlo.
+```
+
+### P5 - OK a P5.1
+
+**Fecha:** 2026-11-23 13:37 (UTC+03:00)
+
+```text
+OK al commit de P5.1. Sigue con P5.2.
+```
+
+### P5 - Test de StrictMode en useUsers
+
+**Fecha:** 2026-11-23 13:46 (UTC+03:00)
+
+```text
+Sí, añádelo: es un comportamiento distinto y real (la app arranca en StrictMode, y sin esa
+comprobación se ve un instante "Couldn't load users." al cargar en desarrollo). Que P6.2
+cubra el mismo patrón en otro hook no protege este.
+Usa renderHook(..., { reactStrictMode: true }), apunta los estados por los que pasa el hook y
+exige que nunca llegue a 'error' y que acabe en 'success'. Llámalo
+"does not flash an error when StrictMode aborts the first request". Comprueba que falla con la
+mutación y pasa sin ella. Actualiza la tabla de la pirámide del plan en el commit de cierre
+(53 tests) y anótalo en AI_LOG como test añadido a propuesta tuya. Enséñame el test y los
+cuatro comandos antes del commit de P5.2.
+```
+
+### P5 - Quitar la dependencia del tiempo y OK a P5.2
+
+**Fecha:** 2026-11-23 13:58 (UTC+03:00)
+
+```text
+Buen diagnóstico. Antes del commit, prueba a quitar la dependencia del tiempo: en vez de
+delay(100), que el handler marque que ha llegado la segunda petición y espere a una promesa
+que resuelve el test:
+
+  let release!: () => void
+  const gate = new Promise<void>((resolve) => { release = resolve })
+  let reached = false
+  server.use(http.get(`${API_BASE_URL}/users`, async () => {
+    reached = true
+    await gate
+    return HttpResponse.json(users)
+  }))
+  // renderHook igual que ahora, con reactStrictMode: true
+  await waitFor(() => expect(reached).toBe(true))
+  release()
+  // waitFor de 'success' y expect(statuses).not.toContain('error')
+
+Así el orden lo fija el test y no el reloj. Repite la mutación 3 veces: si falla las 3 y pasa
+sin ella, quédate con esta versión. Si no detecta el fallo, vuelve al delay(100) con su
+comentario. En los dos casos, anota en AI_LOG qué enfoque quedó y por qué. Con eso, OK al
+commit de P5.2 (sin volver a preguntarme) y sigue con P5.3.
+```
+
+### P5 - OK a P5.3 y commit de P5.4 sin esperar
+
+**Fecha:** 2026-11-23 14:18 (UTC+03:00)
+
+```text
+OK al commit de P5.3. Haz P5.4 y, si los cuatro comandos pasan y las mutaciones fallan donde
+deben, haz su commit sin esperarme. Para antes del commit de P5.5 y enséñame las dos piezas.
+```
+
+### P5 - Mayúsculas en getInitials y textos con datos probados con literales
+
+**Fecha:** 2026-11-23 14:33 (UTC+03:00)
+
+```text
+P5.4: opción 1. Añade la aserción getInitials('ervin howell') → 'EH' al primer test.
+P5.5: bien el oxlint-disable comentado y el nombre accesible completo.
+
+El tropiezo de usernameHandle demuestra que las funciones de messages que montan el texto con
+datos no quedan cubiertas a través de los componentes: el test compara contra la misma función
+rota. Corrígelo así:
+- Commit de docs `docs: test interpolated ui texts with literals`: en CLAUDE.md, cambia "las
+  funciones de messages se prueban a través de los componentes" por "las funciones de messages
+  que interpolan datos se prueban en src/i18n/messages.test.ts comparando con literales (un
+  test, una aserción por función; cada pieza añade la suya)". Actualiza el plan (secciones 3
+  y 5, y la pirámide: 54 tests). Anota el tropiezo en AI_LOG.
+- En P5.5 añade src/i18n/messages.test.ts con
+  it('interpolates data into the texts that need it'), con usernameHandle('Bret') → '@Bret'.
+  Comprueba que falla con la versión rota ('@' sin el nombre).
+
+Orden: commit de P5.4, el de docs y el de P5.5. Si los cuatro comandos pasan y las mutaciones
+fallan donde deben, haz esos commits sin esperarme y sigue con P5.6 y P5.7 igual. Si alguna
+mutación sobrevive, para. Para antes del commit de P5.8 (UsersPanel) y enséñame lo que hayas
+hecho desde aquí.
+```
+
+### P5 - Fallo intermitente: asyncUtilTimeout
+
+**Fecha:** 2026-11-23 14:46 (UTC+03:00)
+
+```text
+Bien el diagnóstico y bien parar. Haz el commit `test: allow slower first requests in async
+utils` con configure({ asyncUtilTimeout: 5000 }) en src/test/setup.ts y su comentario.
+Antes de commitearlo, ejecuta la suite completa 10 veces seguidas y enséñame el resumen (todas
+en verde). Si alguna falla, para: habrá que buscar la causa, no subir más el tiempo. Anota en
+AI_LOG el fallo intermitente, la causa y el arreglo.
+Si las 10 pasan, sigue como antes: commit de P5.6 y P5.7 sin esperarme si los cuatro comandos
+pasan y las mutaciones fallan donde deben. Bien mantener <p role="status"> frente a <output>
+con su comentario. Para antes del commit de P5.8 (UsersPanel).
+```
+
+### P5 - OK a P5.8, P5.9 sin esperar y revisión de P5.10 en el navegador
+
+**Fecha:** 2026-11-23 15:06 (UTC+03:00)
+
+```text
+OK al commit de P5.8. El test de error lo dejamos para el E2E de P8.3, como dice el plan.
+Haz P5.9 y, si los cuatro comandos pasan y las mutaciones fallan donde deben, haz su commit
+sin esperarme. Después haz P5.10 y para antes de su commit: además de lo de siempre, levanta
+`pnpm dev` en segundo plano y dame la URL, porque quiero revisar el layout en el navegador
+(escritorio y móvil) antes de aprobarlo.
+```
+
+### P5 - Revisión en el navegador, P5.11 y cierre
+
+**Fecha:** 2026-11-23 15:18 (UTC+03:00)
+
+```text
+He revisado el layout en el navegador: la selección y la búsqueda funcionan; el diseño se
+cuida en P7. OK a los commits de P5.9 y P5.10.
+En P5.11, como su test corre sin simular matchMedia (escritorio), añádele dos comprobaciones
+sin crear un test nuevo:
+- tras elegir a Ervin, el foco sigue en su botón de la lista (cubre la mutación de P5.10 que
+  da el foco al h2 también en escritorio);
+- con eso, el test pasa por el fallback de isNarrowViewport (comprueba que ahora falla la
+  mutación que sobrevivía en P5.9).
+Comprueba con el servidor de desarrollo si el <title> de index.html le gana al de React 19;
+si gana, quítalo de index.html, como dice el plan, y dímelo.
+Si los cuatro comandos pasan y las mutaciones fallan donde deben, haz el commit de P5.11 sin
+esperarme. Después haz la verificación final y prepara el cierre de la fase
+(`docs: log p5 prompt and ai decisions`), con la pirámide actualizada a 54 tests y todo lo de
+esta fase en AI_LOG: el test de StrictMode con la compuerta, el fallo intermitente y el
+asyncUtilTimeout, el tropiezo de usernameHandle y messages.test.ts, las guías de
+modern-web-guidance aplicadas y los dos oxlint-disable. Para antes de ese commit y deja el
+servidor de desarrollo levantado para que revise el título de la pestaña.
+```
+
+### P5 - OK al cierre
+
+**Fecha:** 2026-11-23 15:46 (UTC+03:00)
+
+```text
+OK al commit de cierre de P5. Asegúrate de que AI_LOG recoge también los dos menores (los dos
+<title> en <head> y el foco que se pierde con "Back to users" si el usuario elegido quedó
+fuera del filtro, que va a "qué haría con más tiempo"). Después del commit, para el servidor
+de desarrollo.
+```

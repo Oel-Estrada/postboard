@@ -353,3 +353,167 @@ uso.
 **Incidente:** al restaurar una mutación de P4.4, el modo automático de permisos bloqueó un
 `git checkout src/test/handlers.ts` que habría borrado el handler `POST /posts`, todavía sin
 commitear. Se restauró desde copias y no se perdió nada.
+
+## P5 — Usuarios, búsqueda y layout
+
+**Fecha:** 2026-11-23 13:28 (UTC+03:00)
+
+**Duración:** 13:28–15:46 (≈138 min)
+
+**Qué pedí:** ejecutar solo la fase P5 del plan (P5.1 a P5.11 y su cierre) con
+`superpowers:executing-plans`, en la misma sesión y sin subagentes, y con
+`superpowers:test-driven-development`:
+
+- Por cada pieza, el test en rojo sin tocar la red real, el código mínimo y el refactor, y un
+  commit por pieza solo con sus archivos. Si el rojo era solo «falta el módulo», comprobar con
+  mutaciones que cada test falla por su motivo, restaurando siempre desde copias.
+- Los tests del plan (pirámide; nada nuevo sin decírmelo) y los textos solo desde
+  `src/i18n/messages.ts`. `AsyncState` entra en `src/types.ts` en P5.2.
+- Antes de la UI, consultar modern-web-guidance con las búsquedas del plan y aplicar la
+  política de navegadores. Consultar en Context7 `renderHook`, la opción `{ once: true }` de MSW
+  3 y el `<title>` de React 19.
+
+Durante la fase fui ajustando con varios mensajes (todos literales en `docs/prompts.md`): el
+test de StrictMode, la compuerta en vez del reloj, la regla de los textos con datos, el
+`asyncUtilTimeout`, los commits sin esperar cuando todo pasa y la revisión del layout en el
+navegador.
+
+**Qué propuso la IA:**
+
+- **Context7:**
+  - `renderHook` devuelve `result.current`, `rerender` y `unmount`, y acepta
+    `{ reactStrictMode: true }`.
+  - En MSW 3, un handler de un solo uso se declara con `{ once: true }` como tercer argumento.
+    Se confirmó también en los tipos instalados (`RequestHandlerOptions.once`).
+  - El `<title>` de React 19 se sube a `<head>` desde cualquier componente, necesita un solo
+    string como hijo (template literal) y no hay que pintar dos a la vez.
+- **Mutaciones en cada pieza**, como en P4. Las que sobrevivían se anotaron y, si no estaban
+  previstas por el plan, se pararon para preguntar:
+  - P5.2: ignorar el resultado de una petición abortada → test de StrictMode (ver abajo).
+  - P5.4: quitar `toUpperCase()` → aserción `'ervin howell'` → `'EH'`.
+  - P5.5 y P5.8: el clic y la selección (`onClick`, `onSelectUser`, `selectedUserId`)
+    sobrevivían, como prevé el plan; desde P5.10 los detecta la integración de `App`.
+  - P5.8: la rama de error de `UsersPanel` sobrevive; se queda para el E2E de errores de P8.3.
+  - P5.8: con `'zzz'` sobrevivía no recortar la búsqueda en el mensaje; el test escribe
+    `'  zzz '` y espera `noUsersMatch('zzz')`.
+  - P5.9: el fallback sin `matchMedia` sobrevivía hasta P5.11.
+  - P5.10: dar el foco al `h2` también en escritorio sobrevivía hasta P5.11.
+- **Test añadido a propuesta de la IA (P5.2):** «does not flash an error when StrictMode
+  aborts the first request». La app arranca en `StrictMode`, que monta el efecto dos veces; sin
+  comprobar la señal abortada, se ve un instante «Couldn't load users.» al cargar en
+  desarrollo.
+  - **Con el handler por defecto el test pasaba también con la mutación.** La primera petición
+    se aborta antes de llegar a MSW y rechaza enseguida, la segunda responde casi a la vez, y
+    React junta `error` y `success` en un solo render.
+  - La IA propuso un `delay(100)` en el handler. Funcionaba, pero dependía del reloj.
+- **Diagnóstico del fallo intermitente** (ver «Incidentes»).
+- **Comprobar el `<title>` en el navegador** (servidor de desarrollo y Chrome): React inserta su
+  `<title>` delante del de `index.html` (`insertBefore(…, 'head > title')` en `react-dom`), así
+  que `document.title` es `Ervin Howell · Postboard`. El `<title>` de `index.html` se queda,
+  como dice el plan.
+- **Verificación de la fase:** los cuatro comandos en HEAD y en cada commit de la fase por
+  separado, en un worktree temporal.
+
+**Qué acepté:**
+
+- El test de StrictMode, como comportamiento distinto y real (54 tests en la pirámide, con el de
+  `messages`).
+- Las mutaciones y los ajustes que las cubren: `'ervin howell'` y `'  zzz '`.
+- Las dos excepciones de Oxlint, cada una con su comentario:
+  - `jsx-a11y/no-redundant-roles` en `<ul role="list">` (`UserList`): Tailwind quita las
+    viñetas y Safari deja entonces de anunciar el `<ul>` como lista.
+  - `jsx-a11y/prefer-tag-over-role` en `<p role="status">` (`LoadingMessage`): Oxlint propone
+    `<output>`, que es para el resultado de un cálculo o de una acción, y no todos los lectores
+    de pantalla anuncian su región viva implícita.
+- Dejar la prueba de la rama de error de `UsersPanel` para el E2E de P8.3, como dice el plan.
+
+**Qué corregí o rechacé (y por qué):**
+
+1. **El test de StrictMode sin depender del reloj.** En vez de `delay(100)`, el handler marca
+   que ha llegado la segunda petición y espera a una promesa que suelta el test
+   (`reached` + `gate`). Así el orden lo fija el test. Con la mutación falla 3 de 3 veces y sin
+   ella pasa 3 de 3; se quedó esta versión.
+2. **Los textos con datos se prueban contra literales.** Al añadir `usernameHandle` con perl,
+   el texto quedó como `` `@` `` sin el nombre y el test de `UserList` seguía en verde, porque
+   compara contra la misma función rota de `messages`. Se cambió la regla en CLAUDE.md y en el
+   plan (commit `docs: test interpolated ui texts with literals`): las funciones de `messages`
+   que interpolan datos se prueban en `src/i18n/messages.test.ts` comparando con literales, un
+   test con una aserción por función, y cada pieza añade la suya (`usernameHandle`,
+   `noUsersMatch` y `pageTitle` en esta fase). Se comprobó que falla con la versión rota.
+3. **El fallo intermitente se arregla buscando la causa, no subiendo el tiempo a ciegas.** Antes
+   del commit del `asyncUtilTimeout`, 10 ejecuciones seguidas de la suite completa en verde, con
+   la condición de parar si alguna fallaba.
+4. **Dos comprobaciones más en el test del `<title>`** (sin crear un test nuevo): el test corre
+   sin simular `matchMedia` (escritorio), así que, tras elegir a Ervin, el foco sigue en su botón
+   de la lista. Cubre la mutación de P5.10 que daba el foco al `h2` también en escritorio y hace
+   pasar el test por el fallback de `isNarrowViewport`.
+5. **Revisé el layout en el navegador** (escritorio y móvil) antes de aprobar P5.10. El diseño
+   se cuida en P7.
+
+**Guías de modern-web-guidance:** se hicieron las seis búsquedas del plan («accessible search
+input», «loading status live region», «error alert message», «responsive two column layout»,
+«focus management view change» y «touch target size») y una más («media query range syntax»).
+Se leyeron `accessibility`, `forms`, `css-layout`, `css`, `responsive-design` y
+`form-factor-adaptation`. Influyeron así:
+
+- **`forms`:** el buscador va dentro de `<search>` (Baseline «Widely available») y el input
+  lleva `autoCorrect="off"`, `autoCapitalize="none"` y `spellCheck={false}`, porque los nombres
+  no son prosa.
+- **`accessibility`:**
+  - `role="list"` en el `<ul>` de `UserList` (el caso de Safari con `list-style: none`).
+  - `<header>` y `<main>` como landmarks en `App`.
+  - El `h2` del detalle con `tabIndex={-1}` para recibir el foco.
+  - El título de la página con el dato propio delante (`{name} · Postboard`) y actualizado al
+    cambiar de vista.
+  - «No users match "…"» en un `<p aria-live="polite">` que se pinta siempre con la lista, para
+    que se anuncie (los resultados de una búsqueda son un aviso «polite»).
+- **Conflicto con CLAUDE.md:** la guía desaconseja usar regiones vivas para estados como
+  «Loading…». Manda CLAUDE.md, así que `LoadingMessage` sigue con `role="status"`.
+- **`form-factor-adaptation`:** áreas táctiles de 44px (`min-h-11`) en los botones y el
+  buscador, como ya decía el plan.
+- **Sintaxis de rangos** (`(width < 48rem)`): ninguna guía la trata. Es Baseline «Widely
+  available» y Tailwind v4 genera la misma, así que se usa sin fallback.
+
+**Desviaciones del plan:**
+
+- P5.2 tiene 4 tests (el de StrictMode); la pirámide pasa a 54 con el de `messages`.
+- P5.4: una aserción más (`'ervin howell'` → `'EH'`).
+- P5.5 añade `src/i18n/messages.test.ts`, y P5.8 y P5.11 añaden su aserción.
+- P5.8: el test escribe `'  zzz '` en vez de `'zzz'`.
+- P5.11: el test del `<title>` comprueba también el foco en escritorio.
+- Un commit que no estaba en el plan: `test: allow slower first requests in async utils`.
+
+**Incidentes:**
+
+- **Fallo intermitente:** «returns the users after a loading state» (P5.2) falló 2 de 9 veces
+  con la suite completa y nunca aislado.
+  - **Causa:** es la primera petición de cada worker y llega en frío (interceptor de MSW,
+    `fetch` y el primer `parse` de zod), con 12 workers en paralelo. Tardaba 1,3–2,2 s frente al
+    límite de 1000 ms de `waitFor`, y el estado seguía en `loading`.
+  - **Arreglo:** `configure({ asyncUtilTimeout: 5000 })` en `src/test/setup.ts`, con un
+    comentario. Solo cambia cuánto esperan `waitFor`/`findBy`, no lo que comprueban. Después,
+    10 de 10 ejecuciones en verde, con el primer test tardando entre 776 y 1641 ms.
+- **Mutaciones mal aplicadas:**
+  - Una sustitución de perl cambió solo el JSDoc (la primera aparición) en vez del JSX
+    (`LoadingMessage`).
+  - Otra no se aplicó y el aviso no saltó, porque iba detrás de un `| head` (`UsersPanel`).
+  - Ambas se repitieron bien. Desde entonces, el helper enseña la línea mutada y avisa si el
+    archivo no cambia.
+- **La mutación del fallback de `isNarrowViewport`** pasaba la línea `Tests`, pero
+  `pnpm test` salía con código 1: Vitest detecta el `TypeError` no capturado del manejador del
+  clic. El helper miraba solo la línea `Tests`; en P5.11 se comprobó también el código de
+  salida de la suite completa, y así hay que hacerlo en las fases siguientes.
+- **La verificación commit a commit falló la segunda vez:** la primera ejecución borró el
+  worktree pero dejó su carpeta con `node_modules`, y en la segunda `git worktree add` falló y
+  el script siguió fuera del repositorio (todo «FAIL»). La IA llegó a anotar el éxito en su
+  registro antes de leer el resultado y lo retiró al verlo. Se rehízo el script con una ruta
+  nueva, abortando si falla la preparación y borrando la carpeta al acabar. Los 13 commits de
+  la fase pasan los cuatro comandos por separado. El repositorio principal no se tocó.
+
+**Menores que quedan anotados** (de la revisión final; no se arreglan en esta fase):
+
+- **Dos `<title>` en `<head>`:** el de React, que gana porque va delante, y el estático de
+  `index.html`, que se queda porque se ve antes de que cargue el JS (como dice el plan).
+- **«Back to users» puede perder el foco:** si el usuario elegido ya no está en la lista
+  filtrada (se elige en escritorio, se filtra y se estrecha la ventana), el foco cae en `body`.
+  Va a «qué haría con más tiempo».
