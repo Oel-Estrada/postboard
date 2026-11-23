@@ -57,6 +57,8 @@ describe('PostForm', () => {
     expect(title).toHaveValue('')
     expect(body).toHaveValue('')
     expect(title).not.toHaveAttribute('aria-invalid', 'true')
+    // The button was disabled while publishing; focus goes on to the next post.
+    expect(title).toHaveFocus()
 
     // A second success must change the live region too, or screen readers stay silent.
     const status = screen.getByRole('status')
@@ -88,6 +90,7 @@ describe('PostForm', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(messages.form.publishError)
     expect(title).toHaveValue('Hello')
     expect(body).toHaveValue('World')
+    expect(title).toHaveFocus()
     expect(screen.getByRole('status')).not.toHaveTextContent(messages.form.published)
   })
 

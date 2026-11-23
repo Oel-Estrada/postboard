@@ -75,13 +75,15 @@ export function PostForm({ onPublish }: PostFormProps) {
     }
   }
 
-  // After a failed validation, focus goes to the first field to fix. A layout
-  // effect runs in the same commit that shows the errors, so focus arrives with
-  // them; a passive effect can run later, leaving focus on <body> meanwhile
-  // (the submit button was disabled while the action ran).
+  // The submit button is disabled while the action runs, so the browser drops
+  // its focus to <body>. When the action ends, focus goes to the first field to
+  // fix or, after publishing (or failing to), back to the title for the next
+  // try. A layout effect runs in the same commit that shows the errors, so focus
+  // arrives with them; a passive effect can run later, leaving focus on <body>.
   useLayoutEffect(() => {
     if (state.errors.title) titleRef.current?.focus()
     else if (state.errors.body) bodyRef.current?.focus()
+    else if (state.published || state.errors.form) titleRef.current?.focus()
   }, [state])
 
   return (
