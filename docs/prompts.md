@@ -923,3 +923,204 @@ Después escribe AI_LOG con todo lo de P6, prepara el commit de cierre
 ```text
 OK al commit de cierre de P6, con la hora real del commit en la Duración.
 ```
+
+## P7 — Pulido visual
+
+**Fecha:** 2026-11-23 18:32 (UTC+03:00)
+
+```text
+Antes de nada: añade al final de docs/prompts.md una sección "## P7 — Pulido visual" con la
+fecha y la hora y este prompt COMPLETO y LITERAL, dentro de un bloque de código, sin resumirlo
+ni corregirlo. Igual que en fases anteriores, añade también, literal y con su hora, cada
+mensaje que te mande durante la fase. Todo eso va en el commit de docs que cierra la fase, con
+AI_LOG.md. Respóndeme en español.
+
+No uses brainstorming ni writing-plans: el plan ya está aprobado en docs/plan.md.
+
+Lee CLAUDE.md y docs/plan.md (sobre todo la dirección visual «Fichero de oficina» de la
+sección 1 y la fase P7). Ejecuta SOLO la fase P7 (P7.1 a P7.4 y su cierre) con la skill
+frontend-design, aplicando esa dirección con Tailwind v4 (tokens en @theme, sin
+tailwind.config.js, fuentes del sistema, sin dependencias nuevas).
+- Solo estilo: no cambies la lógica ni el comportamiento. Los tests existentes deben seguir
+  pasando SIN modificarlos. No crees componentes nuevos (nada de Skeleton): los estados de
+  carga, error y vacío se cuidan con estilo sobre los componentes que ya existen, manteniendo
+  sus roles y textos accesibles. Los textos, solo desde src/i18n/messages.ts.
+- Antes de tocar CSS, consulta la skill modern-web-guidance con las búsquedas que indica el
+  plan para esta fase (foco visible, contraste, desbordamiento horizontal, áreas táctiles) y
+  aplica la política de navegadores de CLAUDE.md. Comprueba el contraste de los colores de la
+  sección 1 (texto normal al menos 4,5:1) y, si alguno no llega, propón el ajuste antes de
+  aplicarlo. Anota en AI_LOG qué influyó y en qué.
+- Responsive mobile-first: sin scroll horizontal a 320px, áreas táctiles de al menos 44px y
+  foco visible en todo lo interactivo.
+- Levanta `pnpm dev` en segundo plano al empezar y déjalo levantado toda la fase. Después de
+  cada pieza, para antes del commit: dime qué he de mirar en el navegador (a 320, 375 y
+  1280 px) y espera mi OK visual. Enséñame también la salida real de pnpm test, typecheck,
+  lint y build.
+- Límite de tiempo: 1,5 h para toda la fase. Si vas a pasarte, prioriza P7.1–P7.3 y avísame.
+Al cerrar la fase, para el servidor de desarrollo (comprueba que el puerto 5173 queda libre),
+haz la verificación final con superpowers:verification-before-completion, actualiza AI_LOG.md
+(con la línea **Duración:** inicio–fin, con la hora del commit de cierre) y prepara el commit
+de cierre `docs: log p7 prompt and ai decisions`; para antes de hacerlo.
+```
+
+### P7 - OK a P7.1 y al borde muted en los inputs
+
+**Fecha:** 2026-11-23 18:40 (UTC+03:00)
+
+```text
+OK visual a P7.1: haz su commit. OK también al borde muted en los inputs para P7.3 (rule sobre
+card da 1,39:1 y WCAG 1.4.11 pide 3:1); anótalo en AI_LOG como corrección al plan. Sigue con
+P7.2 y para antes de su commit con lo que tengo que mirar.
+```
+
+### P7 - Revisión visual de P7.2 y cambios de diseño para P7.3 y P7.4
+
+**Fecha:** 2026-11-23 18:57 (UTC+03:00)
+
+```text
+Revisión visual de P7.2 con cambios de diseño (decisiones mías; anótalas en AI_LOG):
+
+Para P7.2, antes del commit:
+- Avatar circular (rounded-full) en vez de cuadrado.
+- cursor-pointer en las fichas de usuario (Tailwind v4 deja los botones con cursor: default).
+Con eso, haz el commit de P7.2 sin esperarme.
+
+Regla de color 60-30-10 para todo lo que queda: 60 % paper (fondo), 30 % card + ink
+(superficies y texto), 10 % accent solo para la acción principal (Publish post), el usuario
+seleccionado y el foco. danger solo para errores. Nada más en accent.
+
+En P7.3 (detalle, formulario, posts y estados):
+- Cabecera con jerarquía clara: avatar circular grande con las iniciales (getInitials, el
+  mismo estilo que el seleccionado en la lista; sin servicios externos de avatares), el
+  nombre en serif y grande, y el email y la empresa en pequeño y en muted. Que se distinga a
+  primera vista de lo que viene debajo.
+- El formulario, como un bloque delimitado (card con borde y padding) con "New post" como su
+  título, más pequeño que el nombre. Labels encima, inputs como cajas visibles (borde muted,
+  padding, min-h-11; textarea de unas 4 filas).
+- "Publish post", botón relleno en accent con texto blanco, hover más oscuro,
+  cursor-pointer y un estado deshabilitado que se note (cursor-not-allowed y atenuado).
+- Cada post como una tarjeta: borde rule, padding, separación entre tarjetas, título en
+  serif semibold y cuerpo con un máximo de 65ch. El post pendiente, atenuado y con su
+  etiqueta "Publishing…" visible.
+- "Posts (n)" como título de sección.
+- Todos los botones con cursor-pointer y un hover propio.
+
+En P7.4, además de lo del plan: "Back to users" como botón secundario (borde muted, fondo
+card, padding, hover, cursor-pointer) con una flecha en SVG decorativa (aria-hidden), sin
+cambiar su texto.
+
+Sin cambiar lógica ni tests. Para antes del commit de P7.3 con lo que tengo que mirar.
+```
+
+### P7 - Revisión de diseño de P7.3, columna fija, P7.4 y P7.5
+
+**Fecha:** 2026-11-23 19:13 (UTC+03:00)
+
+```text
+He revisado P7.3 con una revisión de diseño. Decisiones mías (anótalas en AI_LOG, con lo que
+aplico y lo que descarto y por qué):
+
+Antes del commit de P7.3:
+- El formulario sin borde y con un fondo suave dentro del panel (no tarjeta dentro de
+  tarjeta). Los posts siguen como tarjetas.
+- "Post published." con estilo de éxito: un icono ✓ en SVG decorativo (aria-hidden) y un
+  color de éxito nuevo en @theme con contraste de al menos 4,5:1 sobre su fondo. Que NO
+  desaparezca solo (WCAG 2.2.1) y sin tocar la región status.
+- Títulos de los posts con la primera letra en mayúscula solo con CSS (::first-letter) y
+  menos peso (medium en vez de semibold), manteniendo la serif.
+- Estado vacío más cuidado (icono decorativo y texto en muted), con el mismo texto.
+Con eso, haz el commit de P7.3 sin esperarme.
+
+Después, un commit aparte `style: make the users column sticky and clearer`:
+- Columna de usuarios fija desde md con su propio scroll (sticky, top 0, alto de la
+  ventana y overflow-y auto). Ojo: el overflow recorta la pestaña que sobresale 1px sobre el
+  panel; resuélvelo sin perder la unión pestaña-panel.
+- Lupa en SVG decorativa en el buscador y un placeholder desde messages (el label se
+  mantiene).
+- Usuario seleccionado con una barra de acento a la izquierda y hover más visible en el
+  resto.
+Para antes de ese commit con lo que tengo que mirar.
+
+Luego P7.4 como estaba, y una pieza nueva P7.5 `style: add subtle motion`: solo CSS, sin
+dependencias y sin tocar lógica ni tests, todo dentro de
+@media (prefers-reduced-motion: no-preference): transiciones de 150–200 ms en hover, foco y
+la pestaña, y la entrada del post nuevo con @starting-style. Para antes de cada commit con lo
+que tengo que mirar.
+
+No se aplican (anótalo en AI_LOG con el motivo): botón deshabilitado con los campos vacíos,
+contador y autogrow, color por usuario, fecha/editar/borrar, line-clamp y paginación, drawer
+en móvil, formulario en modal y delay simulado en el código.
+```
+
+### P7 - Revisión de la columna fija, placeholders y P7.6 (view transitions)
+
+**Fecha:** 2026-11-23 19:26 (UTC+03:00)
+
+```text
+Revisión visual de la columna fija: no hagas el commit todavía. Cambios (decisiones mías,
+a AI_LOG):
+- El buscador y su label se quedan siempre arriba: fuera del contenedor con scroll. Solo hace
+  scroll la lista de usuarios.
+- Quita el truco de direction: rtl. La barra de scroll va a la derecha, fina y discreta
+  (scrollbar-width: thin y scrollbar-color con rule; donde no existen se ignoran) y con
+  scrollbar-gutter: stable. Haz las fichas algo más compactas (manteniendo min-h-11) para que
+  los 10 usuarios quepan sin scroll en una ventana de unos 650px de alto. Si la lista se
+  desborda, la pestaña puede quedarse a la distancia de la barra; dime cómo queda.
+- Placeholders en Title y Text, como pista y sin sustituir a los labels, desde messages.
+- Títulos de los posts en serif con peso 400 (el 500 no se distingue de la negrita).
+Para antes del commit con lo que tengo que mirar.
+
+Después, P7.4 y P7.5 (animaciones) como acordamos, parando antes de cada commit.
+
+Y una pieza nueva, P7.6 `feat: animate view changes with view transitions`:
+- La API nativa document.startViewTransition (Baseline "Newly available" → con detección y
+  fallback, según CLAUDE.md). No uses <ViewTransition> de React: solo anima updates dentro de
+  startTransition y obligaría a rehacer el foco con flushSync de P5.10.
+- Un helper src/lib/withViewTransition.ts con su test (sin soporte, llama a la actualización
+  directamente; con soporte, la pasa a startViewTransition), y úsalo solo en el cambio
+  lista ↔ detalle y en el cambio de usuario, sin cambiar el foco ni el resto de la lógica.
+- Con prefers-reduced-motion: reduce, sin animación (CSS sobre ::view-transition-*).
+- Los tests existentes no se tocan. Consulta modern-web-guidance sobre view transitions.
+Para antes de su commit con lo que tengo que mirar.
+```
+
+### P7 - OK a la columna fija, pulgar en muted y reparto del tiempo
+
+**Fecha:** 2026-11-23 19:36 (UTC+03:00)
+
+```text
+La columna me parece bien: OK a los dos commits y a quitar scrollbar-gutter: stable (anota
+la medición en AI_LOG). El pulgar en muted (3:1 según WCAG 1.4.11). Haz los dos commits sin
+esperarme.
+Reparto del tiempo: P7.4 (para antes de su commit con lo que tengo que mirar), después P7.5
+solo con CSS y 10 minutos como máximo (transiciones de 150–200 ms en hover, foco y la
+pestaña, y la entrada del post nuevo con @starting-style, todo dentro de
+prefers-reduced-motion: no-preference; para antes de su commit y dime cómo ver cada
+animación), y luego el cierre de la fase.
+P7.6 (View Transitions) no se hace: anótala en AI_LOG para "qué haría con más tiempo", con el
+análisis (API nativa con detección y por qué no <ViewTransition> de React).
+```
+
+### P7 - OK a P7.4
+
+**Fecha:** 2026-11-23 19:52 (UTC+03:00)
+
+```text
+OK visual a P7.4: haz su commit. Sigue con P7.5 (solo CSS, 10 minutos como máximo) y para
+antes de su commit con cómo ver cada animación.
+```
+
+### P7 - OK a P7.5 y cierre
+
+**Fecha:** 2026-11-23 19:58 (UTC+03:00)
+
+```text
+OK visual a P7.5: haz su commit. Después cierra la fase: para pnpm dev (puerto 5173 libre),
+verificación final (cada commit de P7 por su cuenta en un worktree temporal que borres al
+acabar), AI_LOG con todas mis decisiones de diseño (feedback visual, regla 60-30-10, avatar
+circular sin servicios externos, la revisión de 15 puntos con lo aplicado y lo descartado y
+por qué, el borde muted de los inputs, el pulgar en muted, quitar scrollbar-gutter: stable con
+la medición, los títulos a 400, las animaciones y P7.6 de View Transitions para "qué haría
+con más tiempo") y prepara el commit `docs: log p7 prompt and ai decisions`. Para antes de ese
+commit.
+```

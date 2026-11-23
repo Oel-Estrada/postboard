@@ -742,3 +742,250 @@ Influyeron así:
 - **El arranque en frío de los tests.** Medir con `maxWorkers` limitado, con `isolate: false`
   (Vitest dice que ahorraría ~1,7 s por archivo) o con un entorno más ligero que jsdom, en vez
   de seguir subiendo tiempos de espera.
+
+## P7 — Pulido visual
+
+**Fecha:** 2026-11-23 18:32 (UTC+03:00)
+
+**Duración:** 18:32–20:09 (≈97 min)
+
+**Qué pedí:** ejecutar solo la fase P7 del plan (P7.1 a P7.4 y su cierre) con la skill
+`frontend-design`, aplicando la dirección visual «Fichero de oficina» con Tailwind v4 (tokens
+en `@theme`, sin `tailwind.config.js`, fuentes del sistema y sin dependencias nuevas):
+
+- Solo estilo: sin cambiar la lógica, sin tocar los tests existentes, sin componentes nuevos y
+  con los textos solo desde `messages`.
+- Antes de tocar CSS, consultar modern-web-guidance con las cuatro búsquedas del plan y
+  comprobar el contraste de la paleta (texto normal, al menos 4,5:1), proponiendo los ajustes
+  antes de aplicarlos.
+- Mobile-first: sin scroll horizontal a 320px, áreas táctiles de 44px y foco visible.
+- `pnpm dev` levantado toda la fase, y parar antes de cada commit para mi OK visual a 320, 375
+  y 1280 px con la salida real de las cuatro comprobaciones.
+- Límite de 1,5 h, priorizando P7.1–P7.3 si no daba tiempo.
+
+Durante la fase revisé cada pieza en el navegador y fui cambiando el diseño con varios mensajes
+(todos literales en `docs/prompts.md`). Las decisiones de diseño de esos mensajes son mías y
+están abajo.
+
+**Qué propuso la IA:**
+
+- **P7.1, tokens:** además de los 7 colores y las 2 fuentes del plan, vaciar los espacios de
+  nombres de color y de tamaño (`--color-*: initial` y `--text-*: initial`). Así solo existen
+  la paleta y la escala 14 / 16 / 20 / 28; un color fuera del sistema ni siquiera genera clase.
+  También `color-scheme: light` y el foco en `:focus-visible` (2px en `accent` con 2px de
+  separación). La sintaxis de `@theme` se comprobó en Context7.
+- **Contraste medido antes de tocar CSS:** todo el texto pasa (`ink` 13,4/15,2:1, `muted`
+  5,2/5,9:1, blanco sobre `accent` 7,1:1, `danger` 5,8/6,6:1, y el anillo de `accent` 6,2:1
+  sobre `paper`). Falla un borde: `rule` sobre `card` da 1,39:1, y el plan lo usaba como borde
+  de los inputs. WCAG 1.4.11 pide 3:1 en el borde que delimita un control. La IA propuso el
+  borde `muted` (5,89:1) y dejar `rule` para separadores y para el panel.
+- **P7.2, la pestaña:**
+  - La ficha seleccionada es 1px más ancha, va con `z-10` y sin borde derecho, así que tapa el
+    píxel del borde izquierdo del panel (medido: la pestaña acaba en 313 y el panel empieza en
+    312).
+  - El panel se estira a la altura de la fila para no ser nunca más corto que la pestaña.
+  - El monograma lleva un borde `rule`, porque `paper` sobre `paper` no se veía (desvío del
+    plan).
+  - `sticky` solo con al menos 45rem de alto, para no esconder los últimos usuarios en una
+    ventana baja.
+- **P7.3:**
+  - Un token `accent-deep` con `color-mix(in oklab, accent 80%, black)` para el hover de
+    «Publish post».
+  - El post pendiente con borde discontinuo además del texto en `muted`, para no depender solo
+    del color.
+  - Un indicador de carga decorativo que solo gira con `motion-safe`.
+  - «Post published.» a la derecha del botón con `order-last`, sin mover la región en el DOM.
+- **Columna fija con scroll propio:** primero con `direction: rtl` para llevar la barra de
+  scroll a la izquierda (lo rechacé, ver abajo). Después, medir `scrollbar-gutter: stable`
+  frente a sin él, y partir los cambios en dos commits atómicos (`messages.ts` repartido con un
+  parche parcial).
+- **P7.5:** sin el truco del `outline` transparente para animar el foco, porque en el modo de
+  alto contraste de Windows ese contorno se pinta siempre. Sin fallback para
+  `@starting-style`: si un navegador no lo soporta, el post nuevo aparece sin animación.
+- **Aviso de tiempo** a las 19:29 (57 de 90 minutos): P7.1–P7.3 hechas, me pasaría unos 25–30
+  minutos con todo lo pendiente, y propuso columna → P7.4 → cierre.
+
+**Qué acepté:** los tokens con los espacios de nombres vaciados, el borde `muted` en los
+inputs, la técnica de la pestaña con el panel estirado, el borde del monograma, `accent-deep`,
+el borde discontinuo del pendiente, los dos commits de la columna, quitar `scrollbar-gutter:
+stable` con su medición y el reparto del tiempo.
+
+**Mis decisiones de diseño (revisión visual):**
+
+- **Correcciones al plan:**
+  - **Borde `muted` en los inputs** en vez de `rule` (1,39:1 frente a los 3:1 de WCAG 1.4.11).
+  - **Pulgar de la barra de scroll en `muted`** en vez de `rule`. Yo había pedido `rule`; la
+    guía de scrollbars pide 3:1 contra el fondo y `rule` sobre `paper` da 1,23:1 (en la captura
+    apenas se veía). `muted` da 5,19:1.
+- **Regla de color 60-30-10:** 60 % `paper` (fondo), 30 % `card` + `ink` (superficies y texto)
+  y 10 % `accent` solo para la acción principal («Publish post»), el usuario seleccionado y el
+  foco. `danger` solo para errores; nada más en `accent`.
+- **Avatar circular** (`rounded-full`) en vez del cuadrado del plan, con las iniciales de
+  `getInitials` y **sin servicios externos de avatares**. En el detalle, un avatar grande con el
+  mismo estilo que el seleccionado en la lista.
+- **`cursor-pointer` en todos los botones,** porque Tailwind v4 deja los botones con
+  `cursor: default`. Cada botón tiene además su propio hover.
+- **Revisión de diseño de P7.3, lo que se aplicó:**
+  1. **Cabecera con jerarquía:** avatar grande, nombre en serif a 28px y email y empresa
+     pequeños en `muted`, separados del resto con una línea.
+  2. **Formulario** como bloque con «New post» de título, labels encima, inputs como cajas
+     visibles con `min-h-11` y textarea de 4 filas. Luego, **sin borde y con fondo `paper`**
+     dentro del panel: nada de tarjeta dentro de tarjeta.
+  3. **«Publish post»** relleno en `accent`, con hover más oscuro y un estado deshabilitado que
+     se nota (`cursor-not-allowed` y atenuado).
+  4. **Posts como tarjetas** (borde `rule`, padding y separación), con el título en serif y el
+     cuerpo de 65ch como máximo. El pendiente, atenuado y con «Publishing…» visible.
+  5. **«Posts (n)»** como título de sección.
+  6. **«Post published.» con estilo de éxito:** ✓ en SVG `aria-hidden` y un token nuevo,
+     `success` (`#1E6B3A`: 5,75:1 sobre `paper` y 6,52:1 sobre `card`). No desaparece solo
+     (WCAG 2.2.1) y la región `status` no cambia.
+  7. **Títulos con la primera letra en mayúscula solo con CSS** (`::first-letter`), y **peso
+     400**: primero bajé a 500, pero no se distinguía de la negrita.
+  8. **Estado vacío cuidado:** icono decorativo y texto en `muted`, con el mismo texto.
+  9. **Columna de usuarios fija desde `md`,** con el buscador y su label siempre arriba y
+     **solo la lista con scroll**.
+  10. **Lupa** en SVG decorativa y **placeholders** desde `messages` (en el buscador, en Title y
+      en Text), sin sustituir a los labels.
+  11. **Seleccionado con barra de acento** a la izquierda y **hover más visible** en el resto.
+  12. **Fichas más compactas** (46px, con `min-h-11`) para que los 10 usuarios quepan en una
+      ventana de unos 650px de alto (medido: el último acaba en 618px).
+  13. **Barra de scroll fina y discreta a la derecha**, sin el truco de `direction: rtl`.
+  14. **«Back to users» como botón secundario** (borde `muted`, fondo `card`, padding, hover y
+      `cursor-pointer`) con una flecha SVG decorativa y el mismo texto (P7.4).
+  15. **Animaciones sutiles (P7.5),** solo con CSS y dentro de `prefers-reduced-motion:
+      no-preference`:
+      - Transiciones de 150 ms en hover, pulsación y foco (el anillo anima `outline-offset`).
+      - 200 ms en la pestaña y su monograma; la barra de acento crece con `@starting-style`.
+      - Entrada del post nuevo (solo el pendiente) con `@starting-style`.
+- **Lo que descarté, y por qué:**
+  - **Botón desactivado con los campos vacíos:** el formulario valida al enviar, muestra los
+    errores y mueve el foco al primer campo (P6). Un botón desactivado no dice qué falta, y
+    `forms` de modern-web-guidance solo lo desactiva después de un envío válido.
+  - **Contador de caracteres y textarea que crece sola:** el enunciado no lo pide y es lógica
+    nueva en una fase de solo estilo.
+  - **Un color por usuario:** rompe la regla 60-30-10 (`accent` solo para la selección) y la
+    paleta cerrada de P7.1.
+  - **Fecha, editar y borrar posts:** la API no da fechas y editar o borrar son no objetivos del
+    plan.
+  - **`line-clamp` y paginación:** la paginación es un no objetivo del plan, y recortar el texto
+    escondería contenido que hoy se lee entero.
+  - **Drawer en móvil y formulario en un modal:** cambiarían la navegación y la gestión del
+    foco de P5.10 y P6, y esto era una fase de solo estilo.
+  - **Un retraso simulado en el código:** metería código falso en la app. Para ver los estados
+    de carga y de error están el throttling y el modo offline de DevTools, y los tests ya
+    simulan la red con MSW.
+- **P7.6, View Transitions: no se hace** (va a «qué haría con más tiempo», más abajo).
+
+**Qué corregí o rechacé (y por qué):**
+
+1. **El truco de `direction: rtl` para la columna.** La IA puso la barra de scroll a la
+   izquierda para que no quedara entre la pestaña y el panel. Lo rechacé: el buscador tenía que
+   quedarse fijo arriba, fuera del scroll, y la barra a la derecha, fina y discreta.
+2. **`scrollbar-gutter: stable` se quitó tras medirlo.** Lo había pedido yo, pero en Chrome
+   sobre Windows reserva el hueco de la barra siempre. Medición en un iframe de 1000×650, con la
+   lista entera visible (`scrollHeight` 474 = `clientHeight` 474):
+   - Con `stable`: hueco de 10px, la pestaña acaba en 302,6 y el panel empieza en 312. La unión
+     se rompe aunque no haya scroll.
+   - Sin `stable`: hueco de 0, la pestaña llega a 313 y queda unida.
+   - Con la lista desbordada (iframe de 1000×480), la barra aparece en los dos casos y la
+     pestaña queda a 10px del panel, que es lo que acepté. El coste de no usar `stable` es que,
+     en una ventana baja, la lista gana 10px de ancho cuando deja de desbordarse al filtrar.
+3. **El cuadrado del monograma, el formulario con borde y los títulos en semibold y en 500**
+   se sustituyeron por mis decisiones de la revisión (arriba).
+
+**Context7 (Tailwind CSS):** la sintaxis de `@theme` en v4: `--text-*--line-height` para el
+interlineado de cada tamaño y `--namespace-*: initial` para vaciar un espacio de nombres.
+
+**Guías de modern-web-guidance:** se hicieron las cuatro búsquedas del plan («focus visible
+styles», «color contrast text», «prevent horizontal overflow» y «touch target size») y se
+leyeron `accessibility`, `color`, `form-factor-adaptation` y `natural-interactions`. Más tarde
+también `customize-scrollbar-color-and-thickness` y `same-document-transitions` (esta última
+para el análisis de P7.6). Influyeron así:
+
+- **`accessibility` y `natural-interactions`:**
+  - El foco va en `:focus-visible` con un color propio que pasa de 3:1 contra el fondo de la
+    página.
+  - Cada estado (hover, pulsación y foco) se ve distinto.
+  - El indicador de carga es `aria-hidden` y las regiones vivas vacías no se ocultan con
+    `display: none`, para no perder el aviso.
+- **`color`:**
+  - La comprobación de 3:1 en los bordes de los controles (el borde `muted` de los inputs).
+  - El hover oscuro con `color-mix` en oklab.
+  - El post pendiente marcado también por la forma (borde discontinuo), no solo por el color.
+- **`form-factor-adaptation`:**
+  - `min-w-0` en los elementos flex que llevan texto.
+  - `overflow-wrap: break-word` en el `body` y `anywhere` solo en el email.
+  - No recortar los controles con `overflow` en un padre.
+  - 44px en todo lo táctil, medido en la lista y en el detalle a 320 y 375.
+- **`customize-scrollbar-color-and-thickness`:**
+  - El pulgar a 3:1 (de ahí `muted`).
+  - `scrollbar-width` y `scrollbar-color` detrás de `@supports`, porque son Baseline «Newly
+    available».
+- **`same-document-transitions`:** la API es Baseline «Newly available» (desde 2025-10-14), así
+  que va con detección y el fallback de actualizar sin animación. Se desactiva con
+  `prefers-reduced-motion: reduce` sobre `::view-transition-*`, y la guía recuerda que la
+  transición no mueve el foco.
+
+**Desviaciones del plan:**
+
+- **Commits de más:** `style: make the users column sticky and clearer`, `style: add form
+  placeholders and lighter post titles` y `style: add subtle motion` (P7.5). P7.6 no se hizo.
+- **Tokens nuevos:** `accent-deep` (hover) y `success` («Post published.»). Los espacios de
+  nombres de color y de tamaño están vaciados.
+- **Claves nuevas en `messages`:** `users.searchPlaceholder`, `form.titlePlaceholder` y
+  `form.bodyPlaceholder`.
+- **Cambios de marcado sin lógica nueva:**
+  - `div` envolventes en `PostsPanel` (cabecera y sección de posts), en `PostForm` (fila del
+    botón) y en `UserSearch` (la lupa).
+  - SVG decorativos, `rows={4}` y los `placeholder`.
+  - `getInitials` usado también en `PostsPanel`.
+- **Sin modo oscuro:** `color-scheme: light`, porque la paleta del plan es solo clara. Va a «qué
+  haría con más tiempo».
+- **Verificación final:** cada uno de los 7 commits de P7, por su cuenta en un worktree
+  temporal, pasó `pnpm test` (23 archivos y 50 tests), `typecheck`, `lint` y `build`. Ningún
+  test, `package.json` ni lockfile cambió en la fase.
+
+**Incidentes:**
+
+- **El `oxlint-disable-next-line` desplazado, cuatro veces.** Al añadir un comentario o partir
+  una etiqueta en varias líneas, la directiva dejó de estar justo encima de la línea con el
+  `role` (`UserList` dos veces, `LoadingMessage` y `PostForm`). `pnpm lint` lo detectó cada vez,
+  antes del commit.
+- **Errores de la IA detectados antes del commit:**
+  - Un `)` de más en `ErrorMessage`.
+  - Una clase `group` sin uso.
+  - `md:flex` en una sola rama del condicional de la columna.
+  - Un `empty:hidden` en la región `aria-live` de la búsqueda, que la habría sacado del árbol de
+    accesibilidad.
+- **El navegador se colgó 45s** al cambiar a mano el texto de nodos que gestiona React para
+  probar una palabra larga. Se repitió añadiendo un elemento aparte y quitándolo después.
+- **La extensión de Chrome se desconectó** en P7.5, así que la IA no pudo comprobar las animaciones
+  en el navegador; las revisé yo en mi OK visual.
+- **El servidor de desarrollo no se paró del todo** (igual que en P6): al parar `pnpm dev`, el
+  proceso de Vite siguió escuchando en el 5173. Se comprobó que era el lanzado en la fase, se
+  cerró y el puerto quedó libre.
+- **`git worktree remove` falló en Windows** («Directory not empty», por `node_modules`). Se
+  borró la carpeta a mano y se hizo `git worktree prune`.
+- **Tiempo:** el límite de 90 minutos se superó por las piezas que añadí durante la fase. La IA avisó
+  a las 19:29 y yo reprioricé: P7.6 fuera y P7.5 con 10 minutos como máximo.
+
+**Qué haría con más tiempo:**
+
+- **P7.6, View Transitions entre la lista y el detalle y al cambiar de usuario:**
+  - Usar la API nativa `document.startViewTransition` (Baseline «Newly available» desde
+    2025-10-14) con detección y fallback, como pide CLAUDE.md, mediante un helper
+    `src/lib/withViewTransition.ts` con su test: sin soporte llama a la actualización
+    directamente y con soporte se la pasa a `startViewTransition`.
+  - Se usaría solo en el cambio lista ↔ detalle y en el cambio de usuario. Dentro del callback
+    tendría que ir el `flushSync` actual, para que el DOM esté actualizado cuando el navegador
+    toma la captura nueva, y el foco tendría que seguir moviéndose como hoy: la guía recuerda
+    que la transición no lo gestiona.
+  - Con `prefers-reduced-motion: reduce`, sin animación (`animation: none` sobre
+    `::view-transition-*`).
+  - **Por qué no `<ViewTransition>` de React:** solo anima las actualizaciones que van dentro de
+    `startTransition`, y aquí el cambio de vista usa `flushSync` para que el foco llegue al
+    contenido nuevo (P5.10). Habría que rehacer esa gestión del foco.
+- **Modo oscuro** con `prefers-color-scheme` y `color-scheme: light dark`, con una segunda
+  paleta y su contraste comprobado.
+- **Revisar el estilo con el modo de alto contraste de Windows** (`forced-colors`): la pestaña y
+  la barra de acento dependen de fondos y de un pseudo-elemento.
