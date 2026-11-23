@@ -1139,3 +1139,190 @@ diff):
 
 - Ejecutar los E2E en CI (con `forbidOnly` ya activo con `CI`) y subir el informe y las trazas
   de los fallos.
+
+## P9 — README y verificación
+
+**Fecha:** 2026-11-23 20:49 (UTC+03:00)
+
+**Duración:** 20:49–21:37 (≈48 min)
+
+**Qué pedí:** sin brainstorming ni writing-plans, y en este orden:
+
+1. La verificación con `superpowers:verification-before-completion` (lint, typecheck, test,
+   build, test:e2e y audit), sin arreglar nada de audit sin mi OK.
+2. Una revisión de código con `superpowers:requesting-code-review`, esta vez con un **subagente
+   revisor** para tener una revisión independiente de la de la sesión, sobre todo `src/` y `e2e/`
+   (bugs, seguridad, accesibilidad y reglas de CLAUDE.md). Después, valorar cada hallazgo con
+   `superpowers:receiving-code-review` y esperar mi OK; cada arreglo en su commit `fix:` con su
+   test en rojo antes.
+3. El README en español con el estado final del código.
+4. Las revisiones manuales que me tocan a mí, y comprobar que no hay `.env` ni secretos en el
+   historial y que hay un commit por pieza.
+5. Cinco frases con las decisiones clave para la entrevista.
+
+Durante la fase mandé varios mensajes (literales en `docs/prompts.md`): cerrar P8 antes de empezar,
+el OK a los arreglos y al Minor 7, y el aviso del contexto seguro en el README.
+
+**Verificación inicial** (salida real, todo con exit 0): `pnpm lint` y `pnpm typecheck` limpios;
+`pnpm test` con 23 archivos y 50 tests; `pnpm build`; `pnpm test:e2e` con 4 de 4; y
+`pnpm audit`: «No known vulnerabilities found».
+
+**Revisión independiente:** un subagente con el modelo más capaz, sin el contexto de la sesión, que
+leyó todo `src/` y `e2e/` y la configuración, ejecutó las puertas y los E2E y probó mutaciones en
+un worktree temporal que borró. Resultado: **0 Critical, 3 Important y 13 Minor**.
+
+- **Lo que confirmó como sólido:** la cancelación de peticiones, el flujo optimista (quitando
+  `startTransition` o el `disabled={pending}` fallan tests), el `localStorage` defensivo, que no
+  hay superficie de XSS y que los tests no tocan la red.
+- **La IA comprobó los tres Important en Chromium real** con un spec temporal (borrado después),
+  antes de proponer nada:
+  1. **El segundo «Post published.» no se anunciaba:** 0 mutaciones en la región `status` durante
+     la segunda publicación, porque `published` pasaba de `true` a `true`.
+  2. **El foco caía en `body` tras publicar:** el botón enfocado se desactiva mientras publica.
+     AI_LOG solo tenía anotado el caso del error al publicar.
+  3. **El foco caía en `body` tras «Try again»:** la alerta desaparece con el botón dentro. Su
+     primera sonda estaba mal (apagó el fallo antes de que la recarga pidiera los usuarios); la
+     repitió esperando a la alerta.
+- **Valoración de los Minor:** los descartados fueron dos.
+  - Los errores de campo anunciados dos veces: lo piden las reglas de CLAUDE.md, y el conflicto
+    con la guía ya estaba anotado en P6.
+  - `aria-busy` en el post pendiente: es una decisión del plan (P6.7), con «Publishing…» visible.
+  - El resto, reales, van a «qué haría con más tiempo» del README: `crypto.randomUUID` fuera de un
+    contexto seguro, campos editables mientras se publica, «Posts (N)» si falla la carga, la región
+    `status` de carga insertada ya con texto, `z.uuid()` para la `key`, registrar los errores de
+    carga, el botón «Atrás» del móvil y huecos de tests. Ya estaban anotados `useUserPosts` sin
+    `loading` al cambiar de usuario y los menores de fases anteriores.
+
+**Qué acepté:** arreglar los tres Important y, además, el **Minor 7** (la columna de usuarios sin
+encabezado y la sección del detalle sin nombre), cada uno en su commit `fix:` con su test en rojo
+antes:
+
+| Commit | Rojo | Arreglo |
+| --- | --- | --- |
+| `fix: announce every successful publish to screen readers` | `MutationObserver`: 0 cambios en la región durante la segunda publicación | Un contador `publishCount` en el estado de la action y el aviso en un `<span key={publishCount}>` |
+| `fix: return focus to the title after publishing` | El foco seguía en el botón desactivado (jsdom), tras publicar y tras fallar | El `useLayoutEffect` lleva el foco al título también tras publicar o fallar al publicar |
+| `fix: keep focus in the panel after Try again` | Foco en `body` (`PostsPanel`) e inactivo (`errors.spec`, Chromium) | En usuarios, el foco va al buscador (`UserSearch` acepta `ref`); en posts, al título del usuario (`PostsPanel` usa su propia `ref` si `App` no le pasa una) |
+| `fix: name the users column and the post detail for screen readers` | Sin `h2` «Users» y sin región con el nombre del usuario | `h2` `sr-only` con `messages.users.heading`, y la sección con `aria-labelledby` a su título |
+
+- Cada arreglo pasó las cuatro puertas y `pnpm test:e2e` antes de su commit. Los tests siguen
+  siendo 50 + 4: los cambios son aserciones dentro de tests existentes.
+- El arreglo 2 cierra también el menor anotado en P6 («tras un error al publicar, el foco queda en
+  `body`»).
+- En el Minor 7, el helper `listedTitles` de `App.integration.test.tsx` buscaba el único `h2`; con
+  «Users» hay dos, así que ahora busca la región del detalle, que es justo lo que da el nombre
+  nuevo.
+
+**Qué corregí o rechacé (y por qué):** pedí añadir al README un aviso: publicar necesita un
+contexto seguro (`localhost` o HTTPS) por `crypto.randomUUID`, así que desde el móvil por la IP de
+la red local no funciona.
+
+**README** (`docs: add readme`):
+- Lo escribió la IA con el estado final del código y lo revisé antes del commit.
+- «Cómo usé la IA» sale solo de este registro, en 8 puntos.
+- La tabla de tiempos suma P1–P8: 648 min, 10 h 48 min. P1, P2 y P2b salen de la hora de inicio
+  de la fase siguiente. La completaré al final, porque habrá una P10 de retoques de diseño.
+
+**Tres piezas más que pedí antes de cerrar** (decisiones mías):
+
+1. **Los E2E fallan ante errores de consola** (`test(e2e): fail on console errors`).
+   - **La protección:** una fixture automática en `e2e/test.ts` hace fallar cualquier spec si la
+     página registra un `console.error` o un `console.warn` (React avisa por ahí) o lanza un
+     error no capturado (`pageerror`). Los specs importan `test` y `expect` de ese archivo.
+   - **Primer resultado:** `errors.spec` falló con «Failed to load resource… 500», el log del
+     propio navegador por el 500 que el spec provoca a propósito.
+   - **La excepción:** una opción `allowedConsoleErrors` (con `test.use`). Solo `errors.spec` la
+     usa, con ese patrón exacto.
+   - **Comprobado:** un `console.error` a propósito en `main.tsx` hizo fallar los 4 specs, y un
+     error no capturado hizo fallar el spec por `pageerror`. Se restauró desde copia, sin diff.
+   - **Límite:** los E2E corren contra el build de producción, donde React no emite sus avisos de
+     desarrollo. La protección ve los `console.error` de producción y los errores no capturados.
+   - **Salida de `pnpm test`:** limpia, sin `stderr` ni `stdout`. Solo hay dos espías de
+     `console.error`, y los dos a propósito: `server.test.ts` lo silencia porque provoca el error
+     de MSW ante una petición sin handler, y `PostsPanel` lo vigila para comprobar que React no
+     avisa de `key` repetidas.
+2. **Metadatos básicos** (`feat: add basic page metadata`): `<meta name="description">` y
+   `<meta name="theme-color">` con el color `paper` (`#eef1f4`) en `index.html`.
+   - Su test va en `search.spec`, junto al `<title>`. Lo vi en rojo antes: no había `description`.
+   - **Excepción a la regla de textos:** la descripción vive en `index.html` y no en `messages`,
+     como el `<title>` estático, porque se lee antes de que cargue el JS.
+   - El color está repetido: `theme-color` y el token `--color-paper` se mantienen a mano, con un
+     comentario.
+3. **Revisión de mantenibilidad** con otro subagente revisor independiente (ver abajo).
+
+**Revisión de mantenibilidad** (otro subagente independiente, con el modelo más capaz y sin el
+contexto de la sesión), sobre `src/` y `e2e/`:
+
+- **Su resumen:** código en buen estado para su tamaño, con nombres coherentes y los dos paneles y
+  los dos hooks siguiendo el mismo patrón. Solo restos pequeños, y nada que pida una abstracción
+  nueva.
+- **Su comprobación:** probó sus 6 primeros hallazgos en un worktree temporal sin tocar tests
+  (typecheck, lint, test y build en verde). **La IA comprobó con grep** cada afirmación antes de
+  valorarla.
+- **Aprobé 5 refactors,** cada uno en su commit, con las cuatro puertas, `test:e2e` y los mismos 54
+  tests (ningún test cambió):
+  1. `refactor: return unknown from request so callers must validate`: `request<T>` terminaba en
+     `as T`, el único cast de la app. Ahora devuelve `unknown` y el tipo obliga a validar con zod.
+  2. `refactor: publish the form values the schema cleaned`: `PostForm` recortaba a mano lo que el
+     esquema ya recorta. Ahora publica `postFormSchema.parse(typed)`: una sola regla de limpieza.
+  3. `refactor: stop exporting helpers used only inside their module`: cuatro exports sin uso
+     fuera de su archivo.
+  4. `refactor: drop the unused abort signal from createPost`: nadie pasaba `signal`, y su JSDoc
+     contradecía el diseño (el POST no se cancela).
+  5. `refactor: target the user monogram by class, not by markup shape`: la regla de P7.5 llegaba
+     al monograma con `li > button > span[aria-hidden]`. Ahora usa la clase `user-monogram`.
+- **Lo que descarté, y por qué:**
+  - **El campo `error` de `AsyncState`, que no se lee:** registrar los errores de carga está en «qué
+    haría con más tiempo», y quitarlo ahora sería quitar lo que esa mejora necesita.
+  - **Un hook genérico `useLoad`, o solo alinear el estilo de `useUsers` y `useUserPosts`:** el
+    genérico añade indirección y tests duplicados para dos recursos; alinear el estilo es
+    cosmético.
+  - **Utilidades compartidas para el botón secundario y los inputs:** solo hay dos copias de cada
+    uno; tendría sentido con una tercera.
+  - **El `as object` de `e2e/mockApi.ts`:** cosmético, y es código de test.
+  - **Renombrar `onSelect` y `SubmitButton`:** solo se puede tocando tests.
+  - El revisor descartó él mismo otras 15 cosas con su motivo (un `Icon` común, un componente
+    `Field`, unificar MSW con `mockApi`…), y estoy de acuerdo.
+
+**Comprobaciones del paso 4 que hizo la IA:**
+
+- **Ni `.env` ni secretos:** ningún archivo `.env`, de credenciales o de claves en todo el
+  historial, ninguna clave, token, contraseña o clave privada en los diffs, y ningún `.env` en el
+  árbol de trabajo.
+- **Un commit por pieza:** `git log` sigue el plan en cada fase. Los commits que no estaban en el
+  plan son los anotados en AI_LOG: los dos de tiempos de espera, el `fix` del foco de P6 y los
+  extras de P7, P8 y P9. Cada fase se cierra con su commit de docs.
+
+**Revisiones manuales que me tocan a mí:** la IA me dio una lista corta de cómo hacerlas: el teclado
+y el foco visible, las áreas táctiles a 320px con DevTools y el lector de pantalla (NVDA o Narrador)
+con los avisos y los errores. También me dio cinco frases con las decisiones clave para la
+entrevista.
+
+**Verificación final** (`superpowers:verification-before-completion`, salida real, todo con exit
+0):
+
+- `pnpm lint`, `pnpm typecheck` y `pnpm build` (JS de 317,83 kB, 96,67 kB gzip).
+- `pnpm test`: 23 archivos y 50 tests.
+- `pnpm test:e2e`: 4 de 4.
+- `pnpm audit`: «No known vulnerabilities found».
+- Los puertos 4173 y 5173 quedan libres.
+
+**Desviaciones del plan:**
+
+- **Commits de más:** 4 `fix:`, 1 `test(e2e):`, 1 `feat:` (metadatos) y 5 `refactor:`, todos
+  pedidos o aprobados por mí en esta fase.
+- **El README** instala solo el headless shell (`--only-shell`), no `playwright install chromium`
+  como decía el plan.
+- **La tabla de tiempos del README** se queda en P1–P8 hasta la fase P10 (retoques de diseño), que
+  medirá también el rendimiento y Lighthouse.
+
+**Incidentes:**
+
+- **Un comando mal montado:** al aplicar el arreglo 3 de la revisión, la IA mezcló un heredoc vacío
+  con perl y el comando falló sin aplicar nada (se comprobó con `git status`). Se rehízo con
+  ediciones normales.
+- **Dos líneas cambiadas por una:** en el refactor 4, un `sed` para corregir el JSDoc de
+  `createPost` cambió también la misma línea de `getPostsByUser`, que sí acepta `signal`. Se vio
+  en el diff, se restauró y se corrigió con `--amend` sobre ese commit local (dos veces), dejando
+  en él solo el cambio de `createPost`.
+- **Una sonda mal planteada:** la primera sonda del foco tras «Try again» apagó el fallo antes de
+  que la recarga pidiera los usuarios. Se repitió esperando a la alerta.

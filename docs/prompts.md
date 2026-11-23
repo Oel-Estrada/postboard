@@ -1179,3 +1179,114 @@ Comprueba que los tests corren con él y anótalo en AI_LOG; en P9 el README usa
 comando. Bien el reuseExistingServer: false y el retries: 0. Sigue con la fase como dice el
 prompt.
 ```
+
+## P9 — README y verificación
+
+**Fecha:** 2026-11-23 20:49 (UTC+03:00)
+
+```text
+Antes de nada: añade al final de docs/prompts.md una sección "## P9 — README y verificación"
+con la fecha y la hora y este prompt COMPLETO y LITERAL, dentro de un bloque de código, sin
+resumirlo ni corregirlo. Igual que en fases anteriores, añade también, literal y con su hora,
+cada mensaje que te mande durante la fase. Todo eso va en el commit de docs que cierra la
+fase, con AI_LOG.md. Respóndeme en español.
+
+No uses brainstorming ni writing-plans: el plan ya está aprobado en docs/plan.md.
+
+Lee CLAUDE.md, docs/plan.md (fase P9) y AI_LOG.md entero. Hazlo en este orden:
+
+1. Verificación: usa superpowers:verification-before-completion y ejecuta pnpm lint,
+   typecheck, test, build, test:e2e y audit. Enséñame la salida real. Si audit encuentra
+   algo, dime qué y su gravedad; no lo arregles sin mi OK.
+2. Revisión de código: usa superpowers:requesting-code-review. Aquí SÍ puedes usar un
+   subagente revisor, porque quiero una revisión independiente de la tuya. Que revise todo
+   src/ y e2e/: bugs, seguridad (XSS, localStorage, datos de la API), accesibilidad y las
+   reglas de CLAUDE.md (idioma, textos en messages, tests). Después usa
+   superpowers:receiving-code-review para valorar cada hallazgo con rigor (descarta los falsos
+   positivos con su motivo). Enséñame la lista con tu valoración y espera mi OK. Cada arreglo
+   aprobado va en su propio commit `fix:`, con su test si cambia el comportamiento.
+3. README.md en español, con el estado final del código:
+   - Qué es y requisitos (Node 24 y la versión de pnpm de packageManager, con
+     `corepack enable`).
+   - Cómo ejecutarlo: pnpm install, dev, build, lint y typecheck; tests unitarios y de
+     integración con pnpm test; E2E con `pnpm exec playwright install --only-shell chromium`
+     y pnpm test:e2e.
+   - Decisiones y por qué: las de la sección 1 del plan y las que añade AI_LOG (zod en las
+     fronteras, textos en messages, commits atómicos, la pirámide, StrictMode y la compuerta,
+     startTransition después del await, useLayoutEffect para el foco, preview del build en
+     los E2E…). Breve: una o dos líneas por decisión.
+   - Tests: la pirámide con los números reales (unitarios, integración y E2E) y por qué ese
+     reparto; las mutaciones como forma de comprobar los tests.
+   - Qué haría con más tiempo: lo del plan más todo lo anotado en AI_LOG (zod/mini, View
+     Transitions, el arranque en frío de los tests, el foco al volver con un filtro activo,
+     "Posts (0)" mientras carga, el foco tras un error al publicar, el límite de P6.9…).
+   - Cómo usé la IA: de 5 a 8 puntos sacados SOLO de AI_LOG.md (qué pedí, qué acepté y qué
+     corregí), incluida la segunda sesión de Claude como revisor. Con enlaces a
+     docs/prompts.md y AI_LOG.md. No copies los prompts.
+   - Tiempo empleado: suma la Duración de cada fase de AI_LOG (P1, P2 y P2b salen de la hora
+     de inicio de la fase siguiente) y da el total.
+   Enséñame el README antes de su commit `docs: add readme`.
+4. Revisiones manuales: dame una lista corta de lo que tengo que comprobar yo (teclado y foco
+   visible, áreas táctiles a 320px, lector de pantalla) y cómo hacerlo, y comprueba tú que no
+   hay .env ni secretos en el historial y que git log tiene un commit por pieza.
+5. Dame 5 frases con las decisiones clave para preparar la entrevista.
+Al final, actualiza AI_LOG.md (con la línea **Duración:** inicio–fin, con la hora del
+commit) y prepara el commit `docs: log p9 prompt and ai decisions`; para antes de hacerlo.
+No hagas push.
+```
+
+### P9 - OK a los 3 Important y al Minor 7
+
+**Fecha:** 2026-11-23 21:04 (UTC+03:00)
+
+```text
+OK a los 3 Important, en 3 commits `fix:`, cada uno con su test en rojo antes. Añade también
+el Minor 7 en su propio commit: un h2 "Users" visualmente oculto (sr-only) que dé nombre a la
+columna y un nombre accesible para la sección del detalle, con los textos desde messages y una
+aserción en un test de integración existente.
+El resto de Minor reales van a "Qué haría con más tiempo" del README y a AI_LOG, con tu
+valoración. En el README, además, un aviso: publicar necesita un contexto seguro (localhost o
+HTTPS) por crypto.randomUUID, así que desde el móvil por la IP de la LAN no funciona.
+Si las cuatro puertas y test:e2e pasan, haz los commits sin esperarme. Después enséñame el
+README completo antes de su commit.
+```
+
+### P9 - OK al README y tres piezas más
+
+**Fecha:** 2026-11-23 21:18 (UTC+03:00)
+
+```text
+OK al README: haz el commit `docs: add readme`. La tabla de tiempos se completará al final
+(habrá una fase más, P10, de retoques de diseño); no la toques ahora.
+
+Antes de cerrar P9, tres cosas más (decisiones mías, a AI_LOG):
+1. Errores de consola: añade a los E2E una protección común (fixture de Playwright o en
+   mockApi) que haga fallar cualquier spec si hay un console.error, un aviso de React o un
+   pageerror. Compruébalo provocando un console.error a propósito (y quítalo). Revisa también
+   la salida de pnpm test por si hay console.error o warn que no estén silenciados a propósito,
+   y dime cuáles. Commit `test(e2e): fail on console errors`.
+2. SEO básico en index.html: <meta name="description"> y <meta name="theme-color"> con el
+   color paper. Como el <title> estático, es la excepción de textos fuera de messages; anótalo.
+   Commit `feat: add basic page metadata`.
+3. Calidad de código: una revisión de mantenibilidad con un subagente revisor independiente
+   (o la skill simplify), sobre src/ y e2e/: código repetido, piezas que deberían
+   reutilizarse, nombres, complejidad, código muerto, tipos y coherencia entre componentes.
+   Valora cada hallazgo con rigor y sin sobreingeniería: en una app de este tamaño, repetir dos
+   líneas puede ser mejor que una abstracción nueva. Enséñame la lista con tu valoración y
+   espera mi OK. Cada arreglo aprobado va en su propio commit `refactor:`, sin modificar los
+   tests: los 54 tienen que seguir pasando igual.
+El rendimiento (CWV) y Lighthouse se miden en P10, con el diseño final.
+```
+
+### P9 - OK a los 5 refactors y cierre
+
+**Fecha:** 2026-11-23 21:31 (UTC+03:00)
+
+```text
+OK a los 5 refactors, cada uno en su commit `refactor:`, con las cuatro puertas y test:e2e
+pasando y los 54 tests iguales; hazlos sin esperarme. Los descartes, a AI_LOG con su motivo.
+Después cierra P9 sin esperarme: AI_LOG (con **Duración:** y la hora real del commit) y el
+commit `docs: log p9 prompt and ai decisions`. En tu respuesta dame la lista de revisiones
+manuales que tengo que hacer yo (teclado y foco visible, áreas táctiles a 320px, lector de
+pantalla) y las 5 frases para la entrevista. No hagas push.
+```
