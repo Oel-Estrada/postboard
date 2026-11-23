@@ -32,6 +32,10 @@
   --text-xl--line-height: 1.75rem;
   --text-2xl: 1.75rem;
   --text-2xl--line-height: 2.125rem;
+
+  /* The detail panel only: a soft lift that falls downwards, so the selected
+     tab, which covers the panel's left edge, still reads as one piece with it. */
+  --shadow-panel: 0 1px 2px rgb(27 38 56 / 0.05), 0 8px 20px -8px rgb(27 38 56 / 0.12);
 }
 
 /*

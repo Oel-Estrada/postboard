@@ -104,7 +104,7 @@ function App() {
             </button>
           )}
           {/* Stretches to the row, so the panel is never shorter than the tab beside it. */}
-          <div className="rounded-md border border-rule bg-card p-4 md:h-full md:p-6">
+          <div className="rounded-md border border-rule bg-card p-4 shadow-panel md:h-full md:p-6">
             {selectedUser ? (
               // The key gives each user a fresh panel: form, optimistic posts and requests.
               <PostsPanel
