@@ -221,3 +221,216 @@ OK a la revisión P2b, con estos ajustes antes del commit:
 Actualiza AI_LOG.md en P2b (acepté y corregí: puntos 1 a 4), enséñame el diff resumido y haz el
 commit "docs: revise plan with persistence, responsive layout and React 19 actions".
 ```
+
+## P3 — Scaffold y librerías
+
+**Fecha:** 2026-11-23 10:57 (UTC+03:00)
+
+```text
+Antes de nada: añade al final de docs/prompts.md una sección "## P3 — Scaffold y librerías"
+con la fecha y la hora y este prompt COMPLETO y LITERAL, dentro de un bloque de código, sin
+resumirlo ni corregirlo. Va en el mismo commit que esta fase.
+
+No uses brainstorming ni writing-plans: el plan ya está aprobado en docs/plan.md.
+Usa superpowers:executing-plans (en esta misma sesión, sin subagentes) y termina con
+superpowers:verification-before-completion.
+
+Lee CLAUDE.md y docs/plan.md. Ejecuta SOLO la fase P3:
+- Lo primero, antes del scaffold: crea pnpm-workspace.yaml en la raíz con
+  `minimumReleaseAge: 1440` (allowBuilds se rellena solo con lo que yo apruebe).
+- IMPORTANTE: la carpeta no está vacía. NO ejecutes create-vite en la raíz ni aceptes vaciar
+  ningún directorio. Haz el scaffold en una subcarpeta temporal
+  (`pnpm create vite@latest _scaffold --template react-ts`, sin modo interactivo y sin
+  instalar), mueve los archivos a la raíz SIN sobrescribir CLAUDE.md, AI_LOG.md, docs/,
+  .gitignore, .gitattributes ni pnpm-workspace.yaml (junta los .gitignore), borra _scaffold,
+  pon `"name": "postboard"` en package.json y limpia la plantilla.
+- Fija packageManager ANTES de instalar nada. Si algún paquete pide ejecutar scripts de
+  instalación, dime cuál es y por qué, y espera a que lo apruebe.
+- Lint: quédate con el linter que traiga la plantilla (si es Oxlint, no añadas ESLint).
+  Activa sus reglas de React hooks (rules-of-hooks y exhaustive-deps), TypeScript y jsx-a11y
+  sin añadir dependencias. Si para algo de esto hiciera falta una dependencia nueva, pídeme OK.
+- Tailwind v4, Vitest + Testing Library + jsdom + MSW, un setup de tests (con MSW en modo
+  `onUnhandledRequest: 'error'`) y los scripts test, typecheck y lint. Vitest debe excluir e2e/.
+- Un test trivial que pase, para comprobar que la configuración funciona.
+Comprueba que `pnpm test`, `pnpm build`, `pnpm typecheck` y `pnpm lint` pasan, y enséñame la
+salida real. Propón 2 commits (scaffold y tooling de tests). Actualiza AI_LOG.md y espera mi OK
+antes de cada uno.
+```
+
+### P3 - Commits atómicos y textos centralizados
+
+**Fecha:** 2026-11-23 11:10 (UTC+03:00)
+
+```text
+No hagas el commit. Cambio de planteamiento en dos puntos. Nada está commiteado, así que
+reorganiza lo que tienes.
+
+1. Commits atómicos y con sentido. Cada commit hace una sola cosa, pasa test, typecheck, lint
+   y build por sí solo, y el código va siempre con su test (sin excepciones como "App sin
+   test"). Ignora el "Propón 2 commits" del prompt de P3 y sigue las piezas del plan. El prompt
+   y el AI_LOG de cada fase van en su propio commit de docs al cerrar la fase, sin mezclarlos
+   con código.
+
+2. Textos de la interfaz centralizados. Todo texto visible o accesible (contenido, labels,
+   placeholders, aria-label, mensajes de error y de estado, título de la página) vive en
+   src/i18n/messages.ts. Los componentes nunca lo escriben a mano.
+   - Un objeto `messages` agrupado por área (app, users, posts, form…), sin `as const`, para
+     que otro idioma pueda declararse con `satisfies typeof messages`. Los textos con datos
+     son funciones (por ejemplo `pageTitle(name)`, `noUsersMatch(query)`, `postsCount(count)`).
+   - Sin librería de i18n ni selector de idioma: no lo pide el enunciado. Va a "más tiempo".
+   - Cada pieza añade solo las claves que usa, en su mismo commit.
+   - Los tests unitarios y E2E importan los textos de messages en vez de repetir literales.
+     Las funciones de messages se prueban a través de los componentes que las usan.
+   - Única excepción: el <title> estático de index.html, que se pinta antes de que cargue JS.
+
+Orden de commits (para antes de cada uno y espera mi OK, como siempre):
+a. `docs: centralize ui copy and require atomic commits`: añade las dos reglas a CLAUDE.md y
+   actualiza docs/plan.md (sección 3: la tabla pasa a ser clave de messages → texto; secciones
+   4, 5 y 6, y las piezas que usen textos). Solo docs.
+b. P3.1 `chore: scaffold vite react-ts project with vitest`: el scaffold más Vitest, Testing
+   Library, user-event, jest-dom y jsdom, setup.ts, los scripts test y test:watch (Vitest solo
+   ejecuta src/ y excluye e2e/), src/i18n/messages.ts con el título de la app y App.test.tsx.
+   Enséñame el rojo. SIN Tailwind: desinstálalo ahora y vuelve a añadirlo en P3.2.
+c. P3.2 `chore: add tailwind css v4`.
+d. P3.3 `test: add msw server that blocks unhandled requests`. El rojo no puede tocar la red
+   real: tiene que fallar porque aún no existe el módulo del servidor, no por hacer una
+   petición de verdad.
+e. `docs: log p3 prompt and ai decisions`: docs/prompts.md (el prompt de P3 y este mensaje,
+   literales) y AI_LOG.md. En AI_LOG anota que separar los textos y los commits atómicos
+   fueron correcciones mías.
+
+En cada commit de código, enséñame la salida real de pnpm test, typecheck, lint y build.
+```
+
+### P3 - OK al commit (a)
+
+**Fecha:** 2026-11-23 11:19 (UTC+03:00)
+
+```text
+OK al commit (a). Sigue con P3.1.
+```
+
+### P3 - @testing-library/dom explícito
+
+**Fecha:** 2026-11-23 11:32 (UTC+03:00)
+
+```text
+Antes del commit: añade @testing-library/dom de forma explícita a devDependencies.
+Testing Library 16 lo declara como peerDependency (no es una dependencia suya) y su README
+pide instalarlo; ahora funciona solo porque pnpm instala los peers automáticamente. Lo
+apruebo: es parte de Testing Library. Va en este mismo commit de P3.1. Anótalo en AI_LOG
+(commit e) como corrección mía. Vuelve a pasar los cuatro comandos y enséñame el diff de
+package.json antes del commit.
+```
+
+### P3 - OK al commit de P3.1
+
+**Fecha:** 2026-11-23 11:35 (UTC+03:00)
+
+```text
+OK al commit de P3.1.
+```
+
+### P3 - Pirámide de tests
+
+**Fecha:** 2026-11-23 11:39 (UTC+03:00)
+
+```text
+Antes de seguir con P3.2: cambio en la estrategia de tests. Es una prueba técnica: quiero
+demostrar que sé testear en las tres capas siguiendo la pirámide, no acumular cantidad. El
+plan prevé unos 134 tests (21 E2E) y es demasiado.
+
+Haz un commit de docs `docs: shape the test plan as a testing pyramid` que:
+1. Añada a CLAUDE.md (sección Tests) las tres capas y la regla de cantidad:
+   - Unitarios (la mayoría): una pieza aislada. Funciones puras, funciones de API y hooks
+     con MSW, componentes que solo pintan.
+   - Integración (menos): varias piezas reales juntas con MSW: UsersPanel, PostForm,
+     PostsPanel y App.
+   - E2E (muy pocos): Playwright con la app real y la red simulada con page.route; solo
+     flujos que cruzan toda la app.
+   - Cada test cubre un comportamiento distinto que merezca defenderse: nada de variaciones
+     del mismo caso ni tests de lo trivial (los tipos no se testean).
+   - Los tests de integración se llaman *.integration.test.tsx, para que la pirámide se vea
+     en el árbol.
+2. Recorte docs/plan.md a un presupuesto orientativo: ~30 unitarios, ~10 de integración y 4
+   E2E (unos 45 en total). Conserva siempre los 5 puntos de revisión de la sección 7, el test
+   de XSS y el de localStorage corrupto. En la API, los casos de error HTTP, error de red y
+   señal se prueban una vez en `request`, y cada función (getUsers, getPostsByUser,
+   createPost) solo comprueba su ruta, su método y su cuerpo. E2E: (1) buscar un usuario y
+   abrir sus posts; (2) crear un post y que siga ahí tras recargar; (3) un error de la API y
+   "Try again" lo recupera; (4) móvil a 375px: lista → detalle → "Back to users". La
+   validación del formulario vacío y el <title> pasan a integración.
+3. Añada al plan una tabla resumen por capa y por pieza (cuántos tests y de qué tipo), que
+   luego irá al README.
+Antes del commit, enséñame la tabla resumen y la lista de tests eliminados. No toques código.
+Después sigue con P3.2 como estaba previsto.
+```
+
+### P3 - Ajustes a la pirámide
+
+**Fecha:** 2026-11-23 11:51 (UTC+03:00)
+
+```text
+Bien la pirámide. Antes del commit, dos ajustes:
+1. PostsPanel: recupera en un solo test de integración la marcha atrás del post optimista:
+   si el POST falla, el post pendiente desaparece, sale el error y no se guarda nada en
+   storage. Es lo que demuestra useOptimistic y ningún otro test lo cubre (PostForm solo
+   prueba que no se pierde lo escrito). La integración pasa a 14 y el total a 51.
+2. E2E móvil: hazlo a 320px en lugar de 375px y añade en el mismo test la comprobación de
+   que no hay scroll horizontal (scrollWidth <= clientWidth). No es un test nuevo. Las áreas
+   táctiles de 44px se quedan en revisión manual.
+No juntes UserSearch con UsersPanel ni SubmitButton con PostForm: cada componente se queda con
+su test propio. 50-51 tests está bien.
+
+Ten en cuenta que te pedí hacer antes el commit de P3.2. Como no comparten archivos, vale este
+orden: commit de docs (solo CLAUDE.md y docs/plan.md) y después el de P3.2 (sus 5 archivos, ya
+aprobados), sin volver a preguntarme si los cuatro comandos pasan. Luego sigue con P3.3.
+```
+
+### P3 - OK a P3.3 y cierre de la fase
+
+**Fecha:** 2026-11-23 11:58 (UTC+03:00)
+
+```text
+OK al commit de P3.3.
+
+Después, un commit de docs aparte, `docs: use msw 3 onUnhandledFrame option in the plan`,
+que solo cambie docs/plan.md (sección 2 y P3.3). No toques docs/prompts.md (los prompts son
+literales) ni la entrada de P2 en AI_LOG.md (es historia). Hazlo sin volver a preguntarme.
+
+Luego prepara el commit de cierre `docs: log p3 prompt and ai decisions` y PARA antes de
+hacerlo:
+- docs/prompts.md: el prompt de P3 y, en orden, TODOS los mensajes que te he mandado en esta
+  fase, literales, cada uno con su hora.
+- AI_LOG.md, entrada de P3, sin inventar nada:
+  - Corregí yo: commits atómicos y textos de la UI en src/i18n/messages.ts (rechacé el primer
+    commit, que mezclaba scaffold, Tailwind y el prompt, y dejaba App sin test);
+    @testing-library/dom explícito por ser peerDependency; la pirámide de tests (de ~129 a 51),
+    con mis dos ajustes (marcha atrás optimista en PostsPanel y E2E móvil a 320px sin scroll
+    horizontal) y sin juntar componentes para ahorrar tests; acepté el orden docs → P3.2
+    cuando no seguiste el que te pedí.
+  - Propuso la IA y acepté: comprobar el evento request:unhandled en el test de MSW;
+    onUnhandledFrame de MSW 3 en vez de fijar la 2.x; defineConfig de vitest/config porque
+    Oxlint rechaza la referencia triple-slash; cleanup() en setup.ts; "strict": true
+    explícito; probar Oxlint con un archivo con errores a propósito.
+Enséñame el diff de los dos archivos antes del commit.
+```
+
+### P3 - Duración, nota del revisor y commit de cierre
+
+**Fecha:** 2026-11-23 12:09 (UTC+03:00)
+
+```text
+Ya he quitado yo la "x" suelta de docs/prompts.md; git status solo muestra los dos archivos
+preparados. Antes del commit:
+1. En la entrada de P3 de AI_LOG.md, debajo de la fecha, añade la línea
+   "**Duración:** 10:57–HH:MM (≈N min)", con la hora del commit de cierre. La necesito para
+   el tiempo empleado.
+2. Al principio de AI_LOG.md (antes de P1), añade esta nota tal cual: "Además de Claude Code,
+   usé una segunda sesión de Claude como revisor: revisaba cada prompt antes de lanzarlo y
+   cada salida antes de aprobar un commit. Algunas de mis correcciones salieron de esa
+   revisión; la decisión final fue siempre mía."
+El matiz del punto 5 déjalo como está. Hecho esto, haz el commit
+`docs: log p3 prompt and ai decisions` sin volver a preguntarme y enséñame `git log --oneline`
+de la fase y `git status`.
+```

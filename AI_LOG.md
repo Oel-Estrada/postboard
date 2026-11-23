@@ -3,6 +3,8 @@
 Registro de cómo se ha usado la IA (Claude Code) en cada fase. Es la única fuente de la sección
 de IA del README.
 
+Además de Claude Code, usé una segunda sesión de Claude como revisor: revisaba cada prompt antes de lanzarlo y cada salida antes de aprobar un commit. Algunas de mis correcciones salieron de esa revisión; la decisión final fue siempre mía.
+
 ## P1 — Reglas de trabajo
 
 **Fecha:** 2026-11-23 09:53 (UTC+03:00)
@@ -189,3 +191,75 @@ Sobre la propuesta de la IA corregí cuatro cosas más:
    `src/lib/breakpoints.ts`), con un comentario que dice que coincide con `md` de Tailwind.
 
 Con el `<title>`, el plan queda en **38 piezas** (P5 pasa a 11).
+
+## P3 — Scaffold y librerías
+
+**Fecha:** 2026-11-23 10:57 (UTC+03:00)
+
+**Duración:** 10:57–12:09 (≈72 min)
+
+**Qué pedí:** ejecutar solo la fase P3 del plan con `superpowers:executing-plans`, en la misma
+sesión y sin subagentes:
+
+- Antes del scaffold, `pnpm-workspace.yaml` con `minimumReleaseAge: 1440`.
+- El scaffold en una subcarpeta temporal (`_scaffold`), sin vaciar la raíz ni sobrescribir lo
+  que ya existía, juntando los `.gitignore` y limpiando la plantilla.
+- `packageManager` fijado antes de instalar, y parar si algún paquete pide scripts de
+  instalación.
+- El linter de la plantilla (Oxlint) con reglas de React hooks, TypeScript y `jsx-a11y`, sin
+  dependencias nuevas.
+- Tailwind v4, Vitest + Testing Library + jsdom + MSW, un setup de tests, Vitest sin `e2e/` y un
+  test trivial.
+
+Durante la fase cambié el planteamiento con varios mensajes (todos literales en
+`docs/prompts.md`): commits atómicos, textos de la interfaz centralizados, `@testing-library/dom`
+explícito y una pirámide de tests.
+
+**Qué propuso la IA:**
+
+- Un primer reparto en 2 commits: el scaffold con Tailwind, Oxlint y el prompt de la fase, y
+  después el tooling de tests. `App` quedaba sin test hasta el segundo commit.
+- Comprobó en Context7 la sintaxis de pnpm (`minimumReleaseAge` y `allowBuilds`), los plugins
+  de Oxlint, Tailwind v4 con `@tailwindcss/vite`, la configuración de Vitest y la API de MSW.
+- `packageManager: pnpm@10.29.3`. Ninguna dependencia pidió scripts de instalación, así que
+  `allowBuilds` no se ha añadido.
+- `"strict": true` explícito en los dos `tsconfig` (la plantilla no lo pone).
+- Oxlint con el plugin `jsx-a11y`, `react/exhaustive-deps` y la categoría `correctness` como
+  error, comprobado con un archivo con errores a propósito que después se borró.
+- `defineConfig` de `vitest/config` en `vite.config.ts`, porque Oxlint rechaza la referencia
+  triple-slash (`/// <reference types="vitest/config" />`) que da la documentación.
+- `cleanup()` de Testing Library en `setup.ts`, porque con los globals de Vitest apagados no se
+  registra solo.
+- En el test de MSW, comprobar además el evento `request:unhandled`: sin eso, un fallo de la red
+  real también haría pasar el test.
+- MSW 3 renombró `onUnhandledRequest` a `onUnhandledFrame`. Propuso usar la v3 con
+  `onUnhandledFrame: 'error'` en vez de fijar la 2.x.
+- Para la pirámide, recortar el plan de unos 129 tests a 50, y juntar `UserSearch` con
+  `UsersPanel` y `SubmitButton` con `PostForm` si había que bajar más.
+
+**Qué acepté:**
+
+- Comprobar el evento `request:unhandled` en el test de MSW.
+- `onUnhandledFrame` de MSW 3 en vez de fijar la 2.x (y su commit de docs para el plan).
+- `defineConfig` de `vitest/config`.
+- `cleanup()` en `setup.ts`.
+- `"strict": true` explícito.
+- Probar Oxlint con un archivo con errores a propósito.
+
+**Qué corregí o rechacé (y por qué):**
+
+1. **Commits atómicos.** Rechacé el primer commit: mezclaba el scaffold, Tailwind y el prompt,
+   y dejaba `App` sin test. Cada commit hace una sola cosa, pasa test, typecheck, lint y build
+   por sí solo y lleva su test; el prompt y el AI_LOG de cada fase van en su propio commit de
+   docs al cerrarla.
+2. **Textos de la interfaz en `src/i18n/messages.ts`**, sin `as const`, con funciones para los
+   textos con datos, y los tests importándolos en vez de repetir literales. Sin librería de
+   i18n.
+3. **`@testing-library/dom` explícito** en `devDependencies`: Testing Library 16 lo declara como
+   `peerDependency` y solo funcionaba porque pnpm instala los peers automáticamente.
+4. **La pirámide de tests** (unitarios, integración y E2E), de unos 129 tests a 51, con dos
+   ajustes míos: recuperar la marcha atrás del post optimista en `PostsPanel` y hacer el E2E
+   móvil a 320px comprobando que no hay scroll horizontal. Rechacé juntar componentes para
+   ahorrar tests: cada componente se queda con su test.
+5. **Orden de los commits.** Acepté el orden docs → P3.2 cuando la IA no siguió el que le pedí
+   (el commit de P3.2 antes que el de la pirámide).
