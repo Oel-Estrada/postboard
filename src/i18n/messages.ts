@@ -11,5 +11,6 @@ export const messages = {
   },
   users: {
     searchLabel: 'Search users',
+    usernameHandle: (username: string) => `@${username}`,
   },
 }
