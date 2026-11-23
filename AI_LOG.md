@@ -1331,8 +1331,8 @@ entrevista.
 
 **Fecha:** 2026-11-23 21:49 (UTC+03:00)
 
-**Duración:** 21:49–22:34 (≈45 min). El fin es la hora del commit
-`docs: add my priorities to the roadmap`.
+**Duración:** 21:49–22:44 (≈55 min). El fin es la hora del último commit de la fase,
+`docs: log p10 additions`.
 
 **Qué pedí:** una pasada final que no estaba en `docs/plan.md`, decidida tras ver la app. Sin
 brainstorming ni writing-plans, y con la skill `frontend-design`. Las condiciones: solo estilo
@@ -1352,12 +1352,14 @@ nuevas, textos desde `messages`, la regla 60-30-10 y el contraste comprobado, co
 4. Lighthouse sobre `pnpm preview` en móvil y escritorio, arreglando solo lo rápido y claro.
 5. El cierre: servidores parados, verificación final, README y este registro.
 
-Durante la fase mandé tres mensajes (literales en `docs/prompts.md`):
+Durante la fase mandé cuatro mensajes (literales en `docs/prompts.md`):
 
 - El OK visual a las 5 piezas, el OK al cambio del selector del E2E y un ajuste más: el nombre
   del usuario más pequeño en móvil.
 - Hacer ya el `preconnect`, bloqueando antes el DNS externo en los E2E.
 - Integrar mis prioridades en «Qué haría con más tiempo» del README.
+- Los añadidos finales: el 404, `llms.txt`, no publicar `ard.json` y la monitorización de errores
+  en el roadmap.
 
 **Qué propuso la IA:**
 
@@ -1509,3 +1511,40 @@ real; informes en `C:\WorkSpace\postboard-shots\lighthouse\`):
   pestaña (monograma atenuado). Se añadió una espera de 400 ms al script.
 - **Un heredoc mal cerrado** al escribir este registro: el comando falló sin escribir nada (se
   comprobó con `git status`) y se rehízo con un archivo temporal.
+
+**Añadidos finales (mi último mensaje, 22:40).** Cada uno en su commit, sin esperar mi OK porque
+todo pasó:
+
+- **`fix: return 404 for unknown paths instead of the app shell`:**
+  - Lighthouse marcaba el manifiesto ARD como inválido. `vite preview` respondía
+    `/.well-known/ard.json` con `index.html` y un 200, la misma causa que el error de
+    `robots.txt`.
+  - Con una sola página y sin router, `appType: 'mpa'` en `vite.config.ts` (comprobado en Context7:
+    mantiene el HTML y quita el fallback de la SPA).
+  - Comprobado en `dev` y en `preview`: `/` y `/robots.txt` dan 200, y `/.well-known/ard.json` y
+    una ruta inventada dan 404. Además, la app carga, lista los usuarios y abre el detalle en los
+    dos. Las cuatro puertas y `test:e2e` pasan.
+- **`feat: add llms.txt`:**
+  - Un `public/llms.txt` según llmstxt.org, en inglés como la interfaz: el título, un resumen en
+    una cita, una nota y enlaces al README y a AI_LOG.
+  - El repo no tiene remoto, así que los enlaces son rutas relativas: en la web publicada darán
+    404 hasta cambiarlos por las URL absolutas del repo publicado.
+- **Sin `ard.json` (decisión mía):** ARD cataloga recursos para agentes (servidores MCP, agentes
+  A2A, skills), y la app no tiene ninguno; uno vacío o inventado sería ruido.
+- **Lighthouse de nuevo:**
+  - La auditoría ARD queda «no aplicable»: con el 404 no hay manifiesto que validar.
+  - `llms.txt` pasa, y **Agentic Browsing sube de 50 a 100** en móvil y en escritorio.
+  - En móvil, rendimiento 98, LCP 2,4 s, TBT 40 ms y CLS 0. En escritorio, 100 y 0,2 s.
+  - Accesibilidad, buenas prácticas y SEO siguen en 100.
+  - Esto corrige el punto 5 de arriba: Agentic Browsing sí acabó teniendo sentido, con el 404 y
+    `llms.txt`.
+- **`docs: add error monitoring to the roadmap`:** **la idea de la monitorización de errores con
+  Sentry es mía.**
+  - Es el punto 5 de «Por dónde empezaría» (el selector de tema pasa a 6): errores con su
+    contexto y los source maps, alertas por email o Slack, sin datos personales, y un
+    `ErrorBoundary` con «Reload» que reporte el error, junto con los errores de carga de la API.
+  - Se quitó el punto «registrar en consola los errores de carga», que queda cubierto por este.
+  - En la sección de Lighthouse del README, el 404, `llms.txt` y por qué no hay `ard.json`.
+- **Commits de más, pedidos por mí:** los tres de arriba y este `docs: log p10 additions`.
+- **Los puertos 4173 y 5173 quedan libres** al terminar. Los dos servidores de la comprobación del
+  404 y el `preview` de Lighthouse se pararon y se comprobaron uno a uno.

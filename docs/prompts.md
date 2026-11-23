@@ -1421,3 +1421,36 @@ que diga que estas ideas son mías, y docs/prompts.md con este mensaje; commit
 `docs: log p10 prompt and ai decisions`. Dame git log --oneline -5, git status y el total de
 tiempo. No hagas push.
 ```
+
+### P10 - 404, llms.txt, ARD y monitorización de errores
+
+**Fecha:** 2026-11-23 22:40 (UTC+03:00)
+
+```text
+Últimos cambios, cada uno en su commit, y después actualiza los tiempos:
+
+1. `fix: return 404 for unknown paths instead of the app shell`: Lighthouse marca el manifiesto
+   ARD como inválido porque vite preview devuelve index.html con 200 en /.well-known/ard.json
+   (la misma causa que robots.txt). Como la app tiene una sola página y no usa router, pon
+   appType: 'mpa' en vite.config.ts. Comprueba con dev y con preview que / funciona, que
+   /.well-known/ard.json y una ruta inventada devuelven 404 y que /robots.txt sigue dando 200.
+   Las cuatro puertas y test:e2e deben pasar.
+2. `feat: add llms.txt`: public/llms.txt siguiendo llmstxt.org (título, resumen en una cita y
+   enlaces al README y a AI_LOG), en inglés como la interfaz.
+3. NO publiques un ard.json: ARD cataloga recursos para agentes (servidores MCP, agentes A2A,
+   skills) y la app no tiene ninguno; uno vacío o inventado sería ruido. Vuelve a pasar
+   Lighthouse y dime qué dice ahora la auditoría ARD y la categoría Agentic Browsing.
+4. `docs: add error monitoring to the roadmap`: en "Por dónde empezaría", un punto 5 nuevo (el
+   selector de tema pasa a 6): monitorización de errores con Sentry o equivalente (errores
+   capturados con su contexto y los source maps, alertas por email o Slack y sin datos
+   personales en los reportes), con un ErrorBoundary que muestre una pantalla de error con
+   "Reload" en vez de dejarla en blanco y lo reporte (hoy la app no tiene ninguno), y los
+   errores de carga de la API también reportados. Quita el punto "registrar en consola los
+   errores de carga", que queda cubierto por este. En el README, menciona 404 y llms.txt donde
+   toque.
+5. El fin de P10 pasa a la hora del último commit: actualiza la tabla de tiempos del README y
+   la Duración de AI_LOG, añade en AI_LOG estos cambios (y que la idea de Sentry es mía) y este
+   mensaje a docs/prompts.md, en un commit `docs: log p10 additions`.
+Hazlo sin esperarme si todo pasa. Dame git log --oneline -6, git status, el total de tiempo y
+el resultado de Lighthouse. No hagas push.
+```

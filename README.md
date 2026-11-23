@@ -302,5 +302,5 @@ duración: salen de la hora de inicio de la fase siguiente.
 | P7 — Pulido visual | 18:32–20:09 | 97 |
 | P8 — Tests E2E | 20:09–20:49 | 40 |
 | P9 — README y verificación | 20:49–21:37 | 48 |
-| P10 — Retoques de diseño y Lighthouse | 21:49–22:34 | 45 |
-| **Total** | | **741 (12 h 21 min)** |
+| P10 — Retoques de diseño y Lighthouse | 21:49–22:44 | 55 |
+| **Total** | | **751 (12 h 31 min)** |
