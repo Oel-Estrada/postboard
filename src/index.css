@@ -13,7 +13,11 @@
   --color-muted: #5a6578;
   --color-rule: #d5dbe3;
   --color-accent: #2d5b8a;
+  /* Hover of the primary button only. */
+  --color-accent-deep: color-mix(in oklab, var(--color-accent) 80%, black);
   --color-danger: #b42318;
+  /* "Post published." only: 5.75:1 on paper, 6.52:1 on card. */
+  --color-success: #1e6b3a;
 
   --font-sans: system-ui, "Segoe UI", Roboto, sans-serif;
   --font-serif: Charter, "Bitstream Charter", "Sitka Text", Cambria, Georgia, serif;

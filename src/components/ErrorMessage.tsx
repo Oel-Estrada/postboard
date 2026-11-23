@@ -15,9 +15,16 @@ interface ErrorMessageProps {
  */
 export function ErrorMessage({ children, onRetry }: ErrorMessageProps) {
   return (
-    <div role="alert">
-      <p>{children}</p>
-      <button type="button" onClick={onRetry} className="min-h-11">
+    <div
+      role="alert"
+      className="flex flex-wrap items-center gap-x-4 gap-y-2 border border-l-4 border-rule border-l-danger bg-card p-3"
+    >
+      <p className="text-danger">{children}</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="min-h-11 cursor-pointer border border-muted bg-card px-4 font-medium hover:bg-paper"
+      >
         {messages.common.tryAgain}
       </button>
     </div>

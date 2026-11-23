@@ -15,6 +15,12 @@ interface PostFormState {
   published: boolean
 }
 
+const labelClass = 'mb-1 block text-sm font-medium'
+// The border is muted, not rule: an input's edge needs 3:1 (WCAG 1.4.11).
+const fieldClass =
+  'block min-h-11 w-full border border-muted bg-card px-3 py-2 aria-[invalid=true]:border-danger'
+const fieldErrorClass = 'mt-1 text-sm text-danger'
+
 const emptyValues: PostFormValues = { title: '', body: '' }
 const initialState: PostFormState = { errors: {}, submitted: emptyValues, published: false }
 
@@ -63,10 +69,10 @@ export function PostForm({ onPublish }: PostFormProps) {
   }, [state])
 
   return (
-    <form action={formAction} noValidate>
-      <h3>{messages.form.heading}</h3>
+    <form action={formAction} noValidate className="flex flex-col gap-4 bg-paper p-4 md:p-5">
+      <h3 className="text-xl font-semibold">{messages.form.heading}</h3>
       <div>
-        <label htmlFor={titleId} className="block">
+        <label htmlFor={titleId} className={labelClass}>
           {messages.form.titleLabel}
         </label>
         <input
@@ -77,16 +83,16 @@ export function PostForm({ onPublish }: PostFormProps) {
           defaultValue={state.submitted.title}
           aria-invalid={state.errors.title ? true : undefined}
           aria-describedby={state.errors.title ? `${titleId}-error` : undefined}
-          className="min-h-11 w-full"
+          className={fieldClass}
         />
         {state.errors.title && (
-          <p id={`${titleId}-error`} role="alert">
+          <p id={`${titleId}-error`} role="alert" className={fieldErrorClass}>
             {state.errors.title}
           </p>
         )}
       </div>
       <div>
-        <label htmlFor={bodyId} className="block">
+        <label htmlFor={bodyId} className={labelClass}>
           {messages.form.bodyLabel}
         </label>
         <textarea
@@ -97,19 +103,46 @@ export function PostForm({ onPublish }: PostFormProps) {
           defaultValue={state.submitted.body}
           aria-invalid={state.errors.body ? true : undefined}
           aria-describedby={state.errors.body ? `${bodyId}-error` : undefined}
-          className="min-h-11 w-full"
+          rows={4}
+          className={`${fieldClass} resize-y`}
         />
         {state.errors.body && (
-          <p id={`${bodyId}-error`} role="alert">
+          <p id={`${bodyId}-error`} role="alert" className={fieldErrorClass}>
             {state.errors.body}
           </p>
         )}
       </div>
-      {state.errors.form && <p role="alert">{state.errors.form}</p>}
-      {/* Always rendered: a live region whose text changes is announced reliably. */}
-      {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role */}
-      <p role="status">{state.published ? messages.form.published : null}</p>
-      <SubmitButton />
+      {state.errors.form && (
+        <p role="alert" className="border-l-4 border-danger pl-3 text-sm text-danger">
+          {state.errors.form}
+        </p>
+      )}
+      {/* The status sits beside the button; it goes after it on screen, not in the DOM. */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        {/* Always rendered: a live region whose text changes is announced reliably.
+            It stays until the next submit: it never disappears on a timer (WCAG 2.2.1). */}
+        {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role */}
+        <p role="status" className="order-last flex items-center gap-1.5 text-sm font-medium text-success">
+          {state.published ? (
+            <>
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 16 16"
+                className="size-4 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 8.5 6.5 12 13 4.5" />
+              </svg>
+              {messages.form.published}
+            </>
+          ) : null}
+        </p>
+        <SubmitButton />
+      </div>
     </form>
   )
 }
