@@ -73,6 +73,22 @@ Commits progresivos que muestren cómo pienso; nunca un único commit con todo.
 - La búsqueda filtra en el cliente, sin distinguir mayúsculas y quitando espacios.
 - La validación rechaza campos vacíos o que solo contienen espacios.
 
+### Textos de la interfaz
+
+- Todo texto visible o accesible (contenido, labels, placeholders, `aria-label`, mensajes de
+  error y de estado, título de la página) vive en `src/i18n/messages.ts`. Los componentes nunca
+  lo escriben a mano.
+- Es un objeto `messages` agrupado por área (`app`, `common`, `users`, `posts`, `form`…), **sin
+  `as const`**, para que otro idioma pueda declararse con `satisfies typeof messages`. Los textos
+  con datos son funciones (por ejemplo `pageTitle(name)`, `noUsersMatch(query)` o
+  `postsCount(count)`).
+- Sin librería de i18n ni selector de idioma: el enunciado no lo pide. Va a «qué haría con más
+  tiempo».
+- Cada pieza añade solo las claves que usa, en su mismo commit.
+- Los tests unitarios y E2E importan los textos de `messages` en vez de repetir literales. Las
+  funciones de `messages` se prueban a través de los componentes que las usan.
+- Única excepción: el `<title>` estático de `index.html`, que se pinta antes de que cargue JS.
+
 ### React 19
 
 - Las APIs de React 19 se usan donde aportan, sin forzarlas.
@@ -114,7 +130,7 @@ Commits progresivos que muestren cómo pienso; nunca un único commit con todo.
 
 - **En inglés:** nombres de variables, funciones, tipos, componentes, hooks y archivos; JSDoc;
   comentarios; descripciones de los tests (`describe`/`it`/`test`); mensajes de commit; textos de
-  la interfaz.
+  la interfaz (en `src/i18n/messages.ts`).
 - **En español:** `README.md` y los documentos de decisiones y prompts (`CLAUDE.md`, `AI_LOG.md`,
   `docs/plan.md`, `docs/prompts.md`).
 - **JSDoc breve en todo lo exportado** (funciones de API, hooks y componentes): qué hace, sus
@@ -122,9 +138,17 @@ Commits progresivos que muestren cómo pienso; nunca un único commit con todo.
 
 ## Forma de trabajar
 
-- Una fase por prompt; dentro de cada fase, un commit por pieza.
+- Una fase por prompt; dentro de cada fase, un commit por pieza del plan.
+- **Commits atómicos:** cada commit hace una sola cosa y pasa por sí solo `pnpm test`,
+  `pnpm typecheck`, `pnpm lint` y `pnpm build`. El código va siempre con su test, sin
+  excepciones.
+- **Cierre de fase:** el prompt de la fase (`docs/prompts.md`) y su entrada en `AI_LOG.md` van
+  en su propio commit de docs al cerrar la fase (`docs: log pN prompt and ai decisions`), sin
+  mezclarlos con código.
 - **Antes de cada commit, PARAR:** explicar qué se hizo y por qué, enseñar `git status` y un diff
-  resumido, y esperar el OK del usuario.
+  resumido, y esperar el OK del usuario. En los commits de código se enseña además la salida
+  real de `pnpm test`, `pnpm typecheck`, `pnpm lint` y `pnpm build`, y el test en rojo de la
+  pieza.
 - Commits con Conventional Commits, en inglés. **Nunca hacer push.**
 - Si una decisión tiene alternativas, dar una recomendación en 1-2 frases y seguir; no dar listas.
 - Cada prompt de fase se guarda completo y literal en `docs/prompts.md`.

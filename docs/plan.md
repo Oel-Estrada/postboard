@@ -44,6 +44,7 @@ mías y van marcadas como tales.
 | Posts creados (P2b) | **`localStorage` por usuario**, con clave versionada y lectura defensiva | Solo en memoria: se perdían al cambiar de usuario o al recargar. |
 | Formulario (P2b) | **Actions de React 19**: `<form action>` + `useActionState`, `useFormStatus` y `useOptimistic` | Un `onSubmit` con estado manual y un hook `useCreatePost`: es más código para lo mismo, y React 19 ya resuelve el estado pendiente, el reset y la vuelta atrás si falla. |
 | Carga de datos (P2b) | **`useEffect` + `AbortController`** en hooks propios | `use()` + Suspense: sin una caché, cada render repetiría la petición. `useTransition`/`useDeferredValue` en la búsqueda: con 10 usuarios no aportan. |
+| Textos de la interfaz (P3) | **Centralizados en `src/i18n/messages.ts`**, sin librería | Literales en cada componente: un cambio de texto obliga a tocar el componente y todos sus tests. Una librería de i18n (`react-intl`, `i18next`): dependencia nueva para un solo idioma que el enunciado no pide. |
 
 ### Decisiones mías (puedes corregirlas)
 
@@ -177,39 +178,58 @@ Se aplican a todas las piezas y salen de `CLAUDE.md`:
 - En inglés van el código, los nombres de archivo, el JSDoc, los comentarios, las descripciones
   de los tests, los commits y los textos de la interfaz. En español van `README.md`, `AI_LOG.md`
   y `docs/*.md`.
+- Todo texto visible o accesible vive en `src/i18n/messages.ts` (sección 3). Los componentes no
+  escriben textos a mano y los tests (unitarios y E2E) los importan de `messages`. Única
+  excepción: el `<title>` estático de `index.html`.
 - JSDoc breve en todo lo exportado (API, hooks y componentes).
 - Los tests no tocan nunca la red real: MSW con `onUnhandledRequest: 'error'` en Vitest y
   `page.route` con bloqueo de todo lo externo en Playwright.
 - Vitest no ejecuta `e2e/` y Playwright no ejecuta `src/`.
-- Commits con Conventional Commits, en inglés y sin push. Antes de cada commit se para para
-  pedir tu OK, enseñando `git status` y un diff resumido.
+- Commits atómicos con Conventional Commits, en inglés y sin push: cada commit hace una sola
+  cosa y pasa por sí solo `pnpm test`, `pnpm typecheck`, `pnpm lint` y `pnpm build`, y el código
+  va siempre con su test. Antes de cada commit se para para pedir tu OK, enseñando `git status`,
+  un diff resumido y, en los de código, el rojo de la pieza y la salida real de los cuatro
+  comandos.
+- El prompt y la entrada de `AI_LOG.md` de cada fase van en su propio commit de docs al cerrarla.
 
-## 3. Textos de la interfaz (fijos)
+## 3. Textos de la interfaz (`src/i18n/messages.ts`)
 
-Los tests y los E2E buscan estos textos exactos. Si cambia uno, cambia en todos los sitios.
+Todos los textos viven en el objeto `messages`, agrupado por área y sin `as const` (otro idioma
+se declararía con `satisfies typeof messages`). Los textos con datos son funciones. Los
+componentes y los tests importan las claves; ninguno repite el literal. Cada pieza añade solo
+las claves que usa, en su mismo commit.
 
-| Dónde | Texto |
-| --- | --- |
-| Título de la app (`h1`) | `Postboard` |
-| Título de la página (`<title>`) | `Postboard` / `{name} · Postboard` |
-| Label de la búsqueda | `Search users` |
-| Carga de usuarios | `Loading users…` |
-| Error de usuarios | `Couldn't load users.` |
-| Botón de reintento | `Try again` |
-| Búsqueda sin resultados | `No users match "{query}".` (con la búsqueda ya recortada) |
-| Detalle sin usuario seleccionado | `Select a user to see their posts.` |
-| Volver en móvil | `Back to users` |
-| Carga de posts | `Loading posts…` |
-| Error de posts | `Couldn't load posts.` |
-| Usuario sin posts | `This user has no posts yet.` |
-| Título de la sección de posts (`h3`) | `Posts ({count})` |
-| Título del formulario (`h3`) | `New post` |
-| Labels | `Title`, `Text` |
-| Errores de validación | `Enter a title.`, `Enter the post text.` |
-| Botón de envío | `Publish post` (`Publishing…` mientras se envía) |
-| Post pendiente en la lista | `Publishing…` |
-| Aviso de éxito (`role="status"`) | `Post published.` |
-| Error al publicar (`role="alert"`) | `Couldn't publish the post. Try again.` |
+| Clave de `messages` | Texto | Dónde | Pieza |
+| --- | --- | --- | --- |
+| `app.title` | `Postboard` | `h1` y `<title>` sin usuario | P3.1 |
+| `app.pageTitle(name)` | `{name} · Postboard` | `<title>` con usuario | P5.11 |
+| `app.selectUser` | `Select a user to see their posts.` | Detalle sin usuario | P5.10 |
+| `app.backToUsers` | `Back to users` | Volver en móvil | P5.10 |
+| `common.tryAgain` | `Try again` | Botón de reintento | P5.7 |
+| `users.searchLabel` | `Search users` | Label de la búsqueda | P5.3 |
+| `users.usernameHandle(username)` | `@{username}` | Username en la lista | P5.5 |
+| `users.loading` | `Loading users…` | Carga de usuarios | P5.8 |
+| `users.loadError` | `Couldn't load users.` | Error de usuarios | P5.8 |
+| `users.noUsersMatch(query)` | `No users match "{query}".` (con la búsqueda ya recortada) | Búsqueda sin resultados | P5.8 |
+| `form.titleRequired` | `Enter a title.` | Error de validación | P6.1 |
+| `form.bodyRequired` | `Enter the post text.` | Error de validación | P6.1 |
+| `form.submit` | `Publish post` | Botón de envío | P6.5 |
+| `form.submitting` | `Publishing…` | Botón mientras se envía | P6.5 |
+| `form.heading` | `New post` | Título del formulario (`h3`) | P6.6 |
+| `form.titleLabel` | `Title` | Label | P6.6 |
+| `form.bodyLabel` | `Text` | Label | P6.6 |
+| `form.published` | `Post published.` | Aviso de éxito (`role="status"`) | P6.6 |
+| `form.publishError` | `Couldn't publish the post. Try again.` | Error al publicar (`role="alert"`) | P6.6 |
+| `posts.pending` | `Publishing…` | Post pendiente en la lista | P6.7 |
+| `posts.empty` | `This user has no posts yet.` | Usuario sin posts | P6.7 |
+| `posts.loading` | `Loading posts…` | Carga de posts | P6.8 |
+| `posts.loadError` | `Couldn't load posts.` | Error de posts | P6.8 |
+| `posts.postsCount(count)` | `Posts ({count})` | Título de la sección de posts (`h3`) | P6.8 |
+
+El `<title>Postboard</title>` de `index.html` es la única excepción: se pinta antes de que cargue
+JS. En la prosa de este plan y en las descripciones de los tests (`it('…')`) los textos se
+nombran por su valor para que se lean bien; en el código y en las aserciones siempre se usa la
+clave.
 
 ## 4. Contratos compartidos
 
@@ -217,6 +237,15 @@ Son las firmas en las que se apoyan las piezas. Cada pieza crea la suya; aquí e
 que los nombres y los tipos no se desvíen.
 
 ```ts
+// src/i18n/messages.ts (claves y textos en la sección 3)
+/** English UI copy. Another locale can be declared as `{ ... } satisfies typeof messages`. */
+export const messages = {
+  app: { title: 'Postboard', pageTitle: (name: string) => `${name} · Postboard`, /* … */ },
+  users: { noUsersMatch: (query: string) => `No users match "${query}".`, /* … */ },
+  posts: { postsCount: (count: number) => `Posts (${count})`, /* … */ },
+  // common, form …
+}
+
 // src/types.ts
 export interface User { id: number; name: string; username: string; email: string; company: { name: string } }
 export interface Post { userId: number; id: number; title: string; body: string }
@@ -286,6 +315,7 @@ interface PostFormState { errors: PostFormErrors; submitted: PostFormValues; pub
 src/
   api/         client.ts, users.ts, posts.ts                          (+ *.test.ts)
   hooks/       useUsers.ts, useUserPosts.ts, useCreatedPosts.ts       (+ *.test.ts)
+  i18n/        messages.ts           (sin test propio: se prueba a través de los componentes)
   components/  UserSearch, UserList, LoadingMessage, ErrorMessage, UsersPanel,
                SubmitButton, PostForm, PostList, PostsPanel          (.tsx + .test.tsx)
   lib/         filterUsersByName.ts, getInitials.ts, breakpoints.ts, isNarrowViewport.ts,
@@ -319,18 +349,22 @@ simulan con `vi.stubGlobal('matchMedia', …)` y `matches: true`.
    `pnpx modern-web-guidance@latest search "<consulta>" --skill-version 2026_11_10-47b4c80e` y
    después `pnpx modern-web-guidance@latest retrieve "<id>"`. Se aplica la política de
    navegadores de `CLAUDE.md` y se anota en `AI_LOG.md` qué guía influyó y en qué.
-2. Escribir el test (o los tests) de la pieza.
+2. Escribir el test (o los tests) de la pieza. Los textos se buscan con las claves de
+   `messages`, nunca con el literal.
 3. Ejecutar `pnpm test <ruta>` y verlo fallar por la razón esperada (falta el módulo o falla la
-   aserción).
-4. Escribir el código mínimo con la firma de la sección 4 y JSDoc si se exporta.
+   aserción). El rojo nunca puede tocar la red real.
+4. Escribir el código mínimo con la firma de la sección 4 y JSDoc si se exporta. Si la pieza
+   pinta textos, añade a `src/i18n/messages.ts` solo las claves que usa.
 5. Ejecutar `pnpm test <ruta>` y verlo en verde. Refactorizar si hace falta, en verde.
-6. Ejecutar `pnpm typecheck` y `pnpm lint` sin errores.
-7. **PARAR:** explicar qué se ha hecho, enseñar `git status` y un diff resumido, y esperar tu
-   OK.
-8. Hacer el commit con el mensaje de la pieza.
+6. Ejecutar `pnpm test`, `pnpm typecheck`, `pnpm lint` y `pnpm build`: el commit tiene que pasar
+   los cuatro por sí solo.
+7. **PARAR:** explicar qué se ha hecho, enseñar `git status`, un diff resumido, el rojo y la
+   salida real de los cuatro comandos, y esperar tu OK.
+8. Hacer el commit con el mensaje de la pieza. Solo incluye los archivos de la pieza.
 
-El prompt de cada fase se añade a `docs/prompts.md` y su entrada a `AI_LOG.md`. Ambos van en el
-último commit de la fase, salvo que el prompt de la fase diga otra cosa.
+**Cierre de cada fase:** el prompt de la fase se añade a `docs/prompts.md` y su entrada a
+`AI_LOG.md`. Ambos van en un commit propio de docs, `docs: log pN prompt and ai decisions`, sin
+código, también con tu OK.
 
 ## 7. Puntos de revisión
 
@@ -361,21 +395,26 @@ Cada una tiene un test en la pieza que la resuelve.
 
 ### P3.1 Proyecto base con Vitest
 
-- **Archivos:** `package.json`, `pnpm-workspace.yaml`, `tsconfig*.json`, `vite.config.ts`, la
-  configuración del linter que traiga la plantilla (con Oxlint, `.oxlintrc.json`),
-  `index.html` (`<title>Postboard</title>`), `src/main.tsx`, `src/App.tsx`, `src/App.test.tsx`
-  y `src/test/setup.ts` (importa `@testing-library/jest-dom/vitest`).
+- **Archivos:** `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `.gitignore`,
+  `tsconfig*.json`, `vite.config.ts`, la configuración del linter que traiga la plantilla (con
+  Oxlint, `.oxlintrc.json`), `index.html` (`<title>Postboard</title>`), `public/favicon.svg`,
+  `src/main.tsx`, `src/App.tsx`, `src/App.test.tsx`, `src/i18n/messages.ts` (solo
+  `app.title`) y `src/test/setup.ts` (importa `@testing-library/jest-dom/vitest`). Sin
+  Tailwind ni `src/index.css`: llegan en P3.2.
 - **Pasos:**
-  - Crear la base con la plantilla `react-ts` de Vite usando pnpm. Comprobar que trae React 19.
-  - Borrar la demo de la plantilla (logos, `App.css` y el contador).
-  - `App` renderiza solo `<h1>Postboard</h1>`.
+  - Crear la base con la plantilla `react-ts` de Vite usando pnpm, en una subcarpeta temporal
+    para no tocar lo que ya hay en la raíz. Comprobar que trae React 19.
+  - Borrar la demo de la plantilla (logos, `App.css`, `index.css`, `icons.svg`, el README y el
+    contador).
+  - `App` renderiza solo `<h1>{messages.app.title}</h1>`.
   - Fijar `packageManager`.
   - Crear `pnpm-workspace.yaml` con `minimumReleaseAge: 1440`. `allowBuilds` se rellena solo con
     lo que `pnpm install` diga que necesita compilar, y tras enseñártelo.
   - Añadir Vitest, `@testing-library/react`, `@testing-library/user-event`,
     `@testing-library/jest-dom` y `jsdom`.
   - Configurar `test` en `vite.config.ts`: `environment: 'jsdom'`,
-    `setupFiles: './src/test/setup.ts'`, `include: ['src/**/*.test.{ts,tsx}']`.
+    `setupFiles: './src/test/setup.ts'`, `include: ['src/**/*.test.{ts,tsx}']` y `e2e/` en
+    `exclude`.
   - **Linter:** se usa el que traiga la plantilla. Si es Oxlint, se configura en
     `.oxlintrc.json` y **no se añade ESLint**. Se activan los plugins y reglas de React hooks
     (`rules-of-hooks` y `exhaustive-deps`), TypeScript y `jsx-a11y`. `pnpm lint` ejecuta ese
@@ -386,31 +425,44 @@ Cada una tiene un test en la pieza que la resuelve.
   `minimumReleaseAge` en pnpm, la configuración de Vitest dentro de Vite y la de los plugins de
   Oxlint (`react`, `typescript` y `jsx-a11y`).
 - **Test (`src/App.test.tsx`):** `it('renders the app heading')`. Comprueba que hay un
-  `heading` de nivel 1 con el nombre `Postboard`.
+  `heading` de nivel 1 con el nombre `messages.app.title`. El rojo: el test se escribe antes de
+  que exista `src/i18n/messages.ts`, así que falla porque falta el módulo.
 - **Verificación:** `pnpm test`, `pnpm typecheck`, `pnpm lint` y `pnpm build` en verde.
 - [ ] **Commit:** `chore: scaffold vite react-ts project with vitest`
 
 ### P3.2 Tailwind CSS v4
 
-- **Archivos:** `vite.config.ts` (plugin `@tailwindcss/vite`) y `src/index.css`
-  (`@import "tailwindcss";`).
+- **Archivos:** `package.json`, `pnpm-lock.yaml`, `vite.config.ts` (plugin `@tailwindcss/vite`),
+  `src/index.css` (`@import "tailwindcss";`) y `src/main.tsx` (importa `index.css`).
 - **Pasos:** instalar `tailwindcss` y `@tailwindcss/vite`, sin `tailwind.config.js`. Los tokens
   visuales se añaden en P7.
-- **Test:** no hay código nuevo que probar. `App.test.tsx` sigue en verde.
-- **Verificación:** `pnpm build` genera CSS con las utilidades usadas, y en `pnpm dev` una clase
-  de prueba se aplica.
+- **Test:** es solo configuración, sin código de la app nuevo. `App.test.tsx` sigue en verde.
+- **Verificación:** `pnpm build` genera CSS con las utilidades usadas (se comprueba con una
+  clase de prueba que no se queda en el commit).
 - [ ] **Commit:** `chore: add tailwind css v4`
 
 ### P3.3 Servidor MSW para los tests
 
-- **Archivos:** `src/test/server.ts`, `src/test/handlers.ts` (vacío por ahora:
-  `export const handlers = []`), `src/test/setup.ts` y `src/test/server.test.ts`.
+- **Archivos:** `package.json`, `pnpm-lock.yaml`, `src/test/server.ts`, `src/test/handlers.ts`
+  (vacío por ahora: `export const handlers = []`), `src/test/setup.ts` y
+  `src/test/server.test.ts`.
 - **Pasos:** instalar `msw`. En `setup.ts`: `beforeAll(() => server.listen({ onUnhandledRequest:
   'error' }))`, `afterEach(() => server.resetHandlers())` y `afterAll(() => server.close())`.
 - **Test (`server.test.ts`):** `it('rejects requests that have no handler')`. Comprueba que
-  `fetch('https://jsonplaceholder.typicode.com/unhandled')` es rechazado. Es la garantía de que
-  ningún test toca la red real.
+  `fetch('https://jsonplaceholder.typicode.com/unhandled')` es rechazado **y** que MSW la
+  registra como no manejada (evento `request:unhandled` de `server.events`). Sin lo segundo, un
+  fallo de la red real también haría pasar el test. Es la garantía de que ningún test toca la
+  red real.
+- **El rojo no toca la red:** el test importa `server` de `./server` y se escribe antes que
+  `server.ts` y que el cambio de `setup.ts`, así que falla al importar, antes de hacer ninguna
+  petición.
 - [ ] **Commit:** `test: add msw server that blocks unhandled requests`
+
+### Cierre de P3
+
+- **Archivos:** `docs/prompts.md` (el prompt de P3 y la corrección posterior, literales) y
+  `AI_LOG.md`.
+- [ ] **Commit:** `docs: log p3 prompt and ai decisions`
 
 ---
 
@@ -469,6 +521,10 @@ Cada una tiene un test en la pieza que la resuelve.
   - `it('rejects when the network fails')`
 - [ ] **Commit:** `feat(api): add createPost`
 
+### Cierre de P4
+
+- [ ] **Commit:** `docs: log p4 prompt and ai decisions` (`docs/prompts.md` y `AI_LOG.md`)
+
 ---
 
 ## P5 — Usuarios, búsqueda y layout
@@ -512,9 +568,11 @@ Cada una tiene un test en la pieza que la resuelve.
 
 - **Archivos:** `src/components/UserSearch.tsx` y `.test.tsx`.
 - **Props:** `{ value: string; onChange: (value: string) => void }`. Es un `input type="search"`
-  con `<label>` «Search users».
+  con `<label>` `messages.users.searchLabel`.
+- **Textos:** `users.searchLabel`.
 - **Tests:**
-  - `it('is labelled "Search users"')`: `getByRole('searchbox', { name: 'Search users' })`.
+  - `it('has a visible search label')`:
+    `getByRole('searchbox', { name: messages.users.searchLabel })`.
   - `it('reports what the user types')`: `user.type` llama a `onChange` con cada valor.
 - [ ] **Commit:** `feat: add UserSearch component`
 
@@ -535,7 +593,9 @@ Cada una tiene un test en la pieza que la resuelve.
 - **Archivos:** `src/components/UserList.tsx` y `.test.tsx`.
 - **Props:** `{ users: User[]; selectedUserId: number | null; onSelect: (user: User) => void }`.
   Es un `<ul>` con un `<button>` por usuario (`min-h-11`) que muestra el monograma
-  (`aria-hidden`), el nombre y el `@username`. El seleccionado lleva `aria-current="true"`.
+  (`aria-hidden`), el nombre y `messages.users.usernameHandle(username)` (`@username`). El
+  seleccionado lleva `aria-current="true"`.
+- **Textos:** `users.usernameHandle`.
 - **Tests:**
   - `it('renders a button per user with name and username')`
   - `it('marks the selected user as current')`: `getByRole('button', { current: true })`
@@ -547,7 +607,8 @@ Cada una tiene un test en la pieza que la resuelve.
 
 - **Archivos:** `src/components/LoadingMessage.tsx` y `.test.tsx`.
 - **Props:** `{ children: ReactNode }`. Es un `<p role="status">` (que ya implica
-  `aria-live="polite"`).
+  `aria-live="polite"`). No tiene textos propios: el texto llega de quien lo usa, ya sacado de
+  `messages`.
 - **Test:** `it('announces the message as a status')`: `getByRole('status')` contiene el texto.
 - [ ] **Commit:** `feat: add LoadingMessage component`
 
@@ -555,7 +616,8 @@ Cada una tiene un test en la pieza que la resuelve.
 
 - **Archivos:** `src/components/ErrorMessage.tsx` y `.test.tsx`.
 - **Props:** `{ children: ReactNode; onRetry?: () => void }`. Es un contenedor con
-  `role="alert"`; si hay `onRetry`, lleva un botón «Try again».
+  `role="alert"`; si hay `onRetry`, lleva un botón `messages.common.tryAgain`.
+- **Textos:** `common.tryAgain`.
 - **Tests:**
   - `it('announces the message as an alert')`
   - `it('calls onRetry when Try again is clicked')`
@@ -567,12 +629,13 @@ Cada una tiene un test en la pieza que la resuelve.
 - **Archivos:** `src/components/UsersPanel.tsx` y `.test.tsx`.
 - **Props:** las de la sección 4. Une `useUsers`, `UserSearch`, `filterUsersByName`,
   `UserList`, `LoadingMessage` y `ErrorMessage`. El texto de la búsqueda es estado local.
+- **Textos:** `users.loading`, `users.loadError` y `users.noUsersMatch`.
 - **Tests** (MSW):
   - `it('shows a loading status and then the users')`
   - `it('filters users as the user types')`: escribir `'  CLEM'` deja 2 botones.
-  - `it('shows a no-match message')`: `'zzz'` → `No users match "zzz".`
+  - `it('shows a no-match message')`: `'zzz'` → `messages.users.noUsersMatch('zzz')`.
   - `it('shows an error and recovers with Try again')`: primero 500 → alerta
-    `Couldn't load users.`; tras clic, la lista.
+    `messages.users.loadError`; tras clic en `messages.common.tryAgain`, la lista.
   - `it('calls onSelectUser with the clicked user')`
 - [ ] **Commit:** `feat: add UsersPanel with search, loading and error states`
 
@@ -600,15 +663,16 @@ Cada una tiene un test en la pieza que la resuelve.
 - **Comportamiento:**
   - **Estado:** `selectedUser: User | null` y `mobileView: 'list' | 'detail'`.
   - **Base (móvil):** se muestra solo la vista activa (la otra con `hidden`). En `detail` hay
-    un botón «Back to users» (`min-h-11`) encima del panel. Desde `md`, rejilla de dos columnas
+    un botón `messages.app.backToUsers` (`min-h-11`) encima del panel. Desde `md`, rejilla de dos columnas
     con las dos vistas visibles (`md:block`) y el botón oculto (`md:hidden`).
   - **Al elegir un usuario:** `mobileView = 'detail'`. Si `isNarrowViewport()`, el foco va al
     `h2` del detalle (`tabIndex={-1}`).
   - **«Back to users»:** `mobileView = 'list'`, se mantiene la selección y el foco vuelve al
     botón del usuario seleccionado. `UsersPanel` no se desmonta, así que la búsqueda se
     conserva.
-  - **El detalle en esta fase:** `Select a user to see their posts.` o el `h2` con el nombre.
-    P6 lo sustituye por `PostsPanel`.
+  - **El detalle en esta fase:** `messages.app.selectUser` o el `h2` con el nombre. P6 lo
+    sustituye por `PostsPanel`.
+  - **Textos:** `app.selectUser` y `app.backToUsers`.
   - Que cada vista se oculte de verdad solo se puede comprobar con CSS real. Lo comprueba el
     E2E móvil de P8; aquí se prueba el comportamiento.
 - **Tests:** se mantiene el del encabezado y se añaden:
@@ -627,16 +691,22 @@ Cada una tiene un test en la pieza que la resuelve.
 
 - **Archivos:** `src/App.tsx` y `src/App.test.tsx`.
 - **Comportamiento:** `App` renderiza `<title>` con el soporte de metadatos de React 19, que lo
-  sube a `<head>`. Sin usuario seleccionado dice `Postboard`; con uno, `{name} · Postboard`.
-  Se mantiene aunque `mobileView` vuelva a `list`, porque la selección sigue.
+  sube a `<head>`. Sin usuario seleccionado es `messages.app.title`; con uno,
+  `messages.app.pageTitle(name)` (`{name} · Postboard`). Se mantiene aunque `mobileView`
+  vuelva a `list`, porque la selección sigue.
+- **Textos:** `app.pageTitle`.
 - **Comprobación en el navegador:** `index.html` ya trae `<title>Postboard</title>`. Si con los
   dos `<title>` el de `index.html` gana en `document.title`, se quita de `index.html` y `App`
   pasa a ser la única fuente. Lo confirma el E2E de P8.1.
 - **Tests:**
   - `it('uses Postboard as the page title when no user is selected')`
   - `it('shows the selected user in the page title')`: clic en «Ervin Howell» →
-    `document.title === 'Ervin Howell · Postboard'`.
+    `document.title === messages.app.pageTitle('Ervin Howell')`.
 - [ ] **Commit:** `feat: show the selected user in the page title`
+
+### Cierre de P5
+
+- [ ] **Commit:** `docs: log p5 prompt and ai decisions` (`docs/prompts.md` y `AI_LOG.md`)
 
 ---
 
@@ -651,9 +721,10 @@ Cada una tiene un test en la pieza que la resuelve.
 ### P6.1 `validatePost`
 
 - **Archivos:** `src/lib/validatePost.ts` y `.test.ts`.
+- **Textos:** `form.titleRequired` y `form.bodyRequired`.
 - **Tests:**
   - `it('requires a title and a text')`: `{ title: '', body: '' }` →
-    `{ title: 'Enter a title.', body: 'Enter the post text.' }`.
+    `{ title: messages.form.titleRequired, body: messages.form.bodyRequired }`.
   - `it('rejects fields that only contain spaces')`
   - `it('returns no errors for valid values')`: → `{}`.
   - `it('reports only the missing field')`
@@ -746,8 +817,9 @@ Son funciones puras: reciben el `Storage` como parámetro y no tocan globales, s
 
 - **Archivos:** `src/components/SubmitButton.tsx` y `.test.tsx`.
 - **Comportamiento:** `useFormStatus()`. Mientras `pending`, el botón está `disabled` y dice
-  `Publishing…`; si no, dice `Publish post`. Es `type="submit"` y tiene `min-h-11`. Tiene que
-  renderizarse dentro de un `<form>`.
+  `messages.form.submitting`; si no, dice `messages.form.submit`. Es `type="submit"` y tiene
+  `min-h-11`. Tiene que renderizarse dentro de un `<form>`.
+- **Textos:** `form.submit` y `form.submitting`.
 - **Tests:**
   - `it('shows Publish post when the form is idle')`
   - `it('is disabled and shows Publishing… while the form action is pending')`: se renderiza
@@ -758,22 +830,24 @@ Son funciones puras: reciben el `Storage` como parámetro y no tocan globales, s
 
 - **Archivos:** `src/components/PostForm.tsx` y `.test.tsx`.
 - **Props y estado:** los de la sección 4. Usa `useActionState(publishAction, initialState)`,
-  con `<form action={formAction} noValidate>` y el `h3` «New post».
+  con `<form action={formAction} noValidate>` y el `h3` `messages.form.heading`.
+- **Textos:** `form.heading`, `form.titleLabel`, `form.bodyLabel`, `form.published` y
+  `form.publishError`.
 - **`publishAction(prev, formData)`:**
   1. Lee `title` y `body` (texto sin recortar) y los recorta.
   2. Si `validatePost` da errores, devuelve `{ errors, submitted: lo escrito, published: false }`
      y no llama a `onPublish`.
   3. Si no, hace `await onPublish(recortados)`:
      - Si va bien, devuelve `{ errors: {}, submitted: { title: '', body: '' }, published: true }`.
-     - Si lanza, devuelve `{ errors: { form: "Couldn't publish the post. Try again." },
-       submitted: lo escrito, published: false }`.
+     - Si lanza, devuelve `{ errors: { form: messages.form.publishError }, submitted: lo
+       escrito, published: false }`.
 - **Render:**
   - Los inputs llevan `defaultValue={state.submitted.title|body}`. Así, el reset automático de
     React los vacía si todo va bien y conserva lo escrito si falla.
   - Cada input tiene su `<label>` y, si hay error, `aria-invalid="true"` y `aria-describedby`
     apuntando a su `<p role="alert">`.
-  - `errors.form` va en un `role="alert"` y `published` muestra `Post published.` en un
-    `role="status"`.
+  - `errors.form` va en un `role="alert"` y `published` muestra `messages.form.published` en
+    un `role="status"`.
   - `SubmitButton` va dentro del formulario.
 - **Tests** (`onPublish` es un `vi.fn()`):
   - `it('labels the title and text fields')`
@@ -785,9 +859,10 @@ Son funciones puras: reciben el `Storage` como parámetro y no tocan globales, s
   - `it('publishes trimmed values')`: `onPublish` recibe `{ title: 'Hello', body: 'World' }`.
   - `it('clears the form and announces success after publishing')`
   - `it('keeps what was typed and shows an error when publishing fails')`: `onPublish` lanza
-    → alerta `Couldn't publish the post. Try again.` y los inputs con sus valores.
+    → alerta `messages.form.publishError` y los inputs con sus valores.
   - `it('publishes once on a double click')`: `onPublish` devuelve una promesa pendiente y, tras
-    `dblClick`, se ha llamado una vez y el botón está desactivado con `Publishing…`.
+    `dblClick`, se ha llamado una vez y el botón está desactivado con
+    `messages.form.submitting`.
 - [ ] **Commit:** `feat: add PostForm using form actions`
 
 ### P6.7 `PostList`
@@ -797,8 +872,9 @@ Son funciones puras: reciben el `Storage` como parámetro y no tocan globales, s
   - Es un `<ul>` de `<article>`, cada uno con un `h4` (el título) y un `<p>` (el cuerpo), con
     `key` igual a `post.key`.
   - Todo se pinta como texto JSX, sin `dangerouslySetInnerHTML`.
-  - Un post `pending` lleva `aria-busy="true"` y la etiqueta `Publishing…`.
-  - Si no hay posts, muestra `This user has no posts yet.`.
+  - Un post `pending` lleva `aria-busy="true"` y la etiqueta `messages.posts.pending`.
+  - Si no hay posts, muestra `messages.posts.empty`.
+- **Textos:** `posts.pending` y `posts.empty`.
 - **Tests:**
   - `it('renders each post title and text')`
   - `it('shows an empty message when there are no posts')`
@@ -828,16 +904,18 @@ Son funciones puras: reciben el `Storage` como parámetro y no tocan globales, s
        sea de otro.
     3. Si `createPost` lanza, el error se propaga a `PostForm`. Al terminar la action, el post
        optimista desaparece solo y no se guarda nada.
-  - **Lista:** `PostForm`, luego el `h3` `Posts ({count})` y `PostList` con
+  - **Lista:** `PostForm`, luego el `h3` `messages.posts.postsCount(count)` y `PostList` con
     `[...visibleCreated, ...(fetched si success)]`. Debajo, `LoadingMessage` o `ErrorMessage`
-    para la parte de la API. Los creados se ven aunque la API falle.
+    para la parte de la API, con `messages.posts.loading` y `messages.posts.loadError`. Los
+    creados se ven aunque la API falle.
+- **Textos:** `posts.loading`, `posts.loadError` y `posts.postsCount`.
 - **Tests** (MSW):
   - `it('shows the user header')`
   - `it('shows a loading status and then the posts')`
   - `it('shows an error and recovers with Try again')`: el error sale solo aquí y los posts
     creados siguen visibles.
   - `it('shows a new post as pending until the API confirms it')`: con el POST retrasado se ve
-    `Publishing…` en la lista; después desaparece y el post queda arriba.
+    `messages.posts.pending` en la lista; después desaparece y el post queda arriba.
   - `it('removes the pending post and shows an error when publishing fails')`: con POST 500,
     el post desaparece, se ve la alerta y el formulario conserva lo escrito.
   - `it('shows two created posts even though the API returns the same id')`: dos títulos, el
@@ -873,6 +951,10 @@ Son funciones puras: reciben el `Storage` como parámetro y no tocan globales, s
   siguiente montaje. Se resolvería con `useSyncExternalStore` sobre un pequeño almacén con
   suscripción.
 - [ ] **Commit:** `feat: show selected user posts in app`
+
+### Cierre de P6
+
+- [ ] **Commit:** `docs: log p6 prompt and ai decisions` (`docs/prompts.md` y `AI_LOG.md`)
 
 ---
 
@@ -930,6 +1012,10 @@ horizontal overflow» y «touch target size».
 - **Verificación:** capturas a 320 y 375 px sin desbordamiento, y los tests siguen en verde.
 - [ ] **Commit:** `style: polish mobile layout and touch targets`
 
+### Cierre de P7
+
+- [ ] **Commit:** `docs: log p7 prompt and ai decisions` (`docs/prompts.md` y `AI_LOG.md`)
+
 ---
 
 ## P8 — Tests E2E
@@ -950,12 +1036,14 @@ Playwright.
   vaya a `localhost`. Después registra las de `https://jsonplaceholder.typicode.com/**`, que
   sirven los datos de `src/test/fixtures.ts`, con opciones para forzar 500, red caída o retraso
   por endpoint. Devuelve un registro de las peticiones `POST`.
+- **Textos:** los specs importan `messages` de `src/i18n/messages.ts` (igual que importan
+  `fixtures.ts`) y nunca repiten un literal de la interfaz.
 - **Flujos (`users.spec.ts`):**
   - `test('lists the users from the API')`: 4 usuarios.
   - `test('filters users by name ignoring case and spaces')`: `'  CLEM '` → 2 usuarios.
   - `test('shows a message when no user matches')`
-  - `test('shows the selected user in the page title')`: `toHaveTitle('Postboard')` y, tras
-    elegir a Leanne, `toHaveTitle('Leanne Graham · Postboard')`.
+  - `test('shows the selected user in the page title')`: `toHaveTitle(messages.app.title)` y,
+    tras elegir a Leanne, `toHaveTitle(messages.app.pageTitle('Leanne Graham'))`.
 - [ ] **Commit:** `test(e2e): add playwright with mocked api and user search flow`
 
 ### P8.2 Flujo de posts
@@ -963,7 +1051,7 @@ Playwright.
 - **Archivos:** `e2e/posts.spec.ts`.
 - **Flujos:**
   - `test('shows the posts of the selected user after a loading status')`: con retraso en
-    `GET /posts`, se ve `Loading posts…` y después los posts.
+    `GET /posts`, se ve `messages.posts.loading` y después los posts.
   - `test('publishes a post that shows as pending and then at the top of the list')`: con
     retraso en `POST`.
   - `test('publishes two posts in a row and shows both')`
@@ -1008,6 +1096,10 @@ Playwright.
 **Verificación de la fase:** `pnpm test:e2e` en verde, `pnpm test` no recoge nada de `e2e/` y
 Playwright no recoge nada de `src/`.
 
+### Cierre de P8
+
+- [ ] **Commit:** `docs: log p8 prompt and ai decisions` (`docs/prompts.md` y `AI_LOG.md`)
+
 ---
 
 ## P9 — README y verificación final
@@ -1026,6 +1118,8 @@ Playwright no recoge nada de `src/`.
     - La URL por usuario (router).
     - Sincronizar los posts entre pestañas (evento `storage`).
     - Limpiar el error de un campo al editarlo (ahora se recalcula en cada envío).
+    - Otros idiomas: una librería de i18n y un selector de idioma sobre `messages` (cada idioma
+      se declararía con `satisfies typeof messages`).
     - Ver un post que termina de publicarse después de volver a su usuario (límite de P6.9).
     - La cobertura de tests.
     - Lo que se anote en las fases.
@@ -1042,5 +1136,5 @@ Playwright no recoge nada de `src/`.
   - `git log` muestra un commit por pieza.
   - No hay `.env` ni secretos.
 - Si algo falla, se corrige en un commit `fix:` aparte, con su test.
-- [ ] **Commit:** `docs: add final verification to ai log` (la entrada de P9 en `AI_LOG.md` y
-  el prompt en `docs/prompts.md`)
+- [ ] **Commit (cierre de P9):** `docs: log p9 prompt and ai decisions` (la entrada de P9 en
+  `AI_LOG.md`, con la verificación final, y el prompt en `docs/prompts.md`)
