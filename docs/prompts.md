@@ -1454,3 +1454,14 @@ tiempo. No hagas push.
 Hazlo sin esperarme si todo pasa. Dame git log --oneline -6, git status, el total de tiempo y
 el resultado de Lighthouse. No hagas push.
 ```
+
+### P10 - Enlaces de llms.txt al repo publicado
+
+**Fecha:** 2026-11-23 22:49 (UTC+03:00)
+
+```text
+El repo ya está publicado en https://github.com/Oel-Estrada/postboard. En public/llms.txt,
+cambia los enlaces relativos de README.md y AI_LOG.md por sus URL absolutas en GitHub
+(https://github.com/<tu-usuario>/postboard/blob/main/README.md y …/AI_LOG.md). Commit
+`docs: link llms.txt to the published repo`, con la nota en AI_LOG. No hagas push: lo hago yo.
+```

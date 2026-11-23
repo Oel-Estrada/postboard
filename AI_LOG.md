@@ -1527,8 +1527,8 @@ todo pasó:
 - **`feat: add llms.txt`:**
   - Un `public/llms.txt` según llmstxt.org, en inglés como la interfaz: el título, un resumen en
     una cita, una nota y enlaces al README y a AI_LOG.
-  - El repo no tiene remoto, así que los enlaces son rutas relativas: en la web publicada darán
-    404 hasta cambiarlos por las URL absolutas del repo publicado.
+  - El repo aún no tenía remoto, así que los enlaces eran rutas relativas, que en la web publicada
+    daban 404. Al publicarlo, los cambié por sus URL absolutas en GitHub (ver abajo).
 - **Sin `ard.json` (decisión mía):** ARD cataloga recursos para agentes (servidores MCP, agentes
   A2A, skills), y la app no tiene ninguno; uno vacío o inventado sería ruido.
 - **Lighthouse de nuevo:**
@@ -1548,3 +1548,7 @@ todo pasó:
 - **Commits de más, pedidos por mí:** los tres de arriba y este `docs: log p10 additions`.
 - **Los puertos 4173 y 5173 quedan libres** al terminar. Los dos servidores de la comprobación del
   404 y el `preview` de Lighthouse se pararon y se comprobaron uno a uno.
+- **`docs: link llms.txt to the published repo`:** publiqué el repo en
+  `https://github.com/Oel-Estrada/postboard`. Los enlaces de `public/llms.txt` apuntan ahora a
+  `…/blob/main/README.md` y `…/blob/main/AI_LOG.md`, así que funcionan desde la web publicada. El
+  push lo hago yo. La duración de P10 no cambia: este ajuste llegó después del cierre.

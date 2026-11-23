@@ -6,5 +6,5 @@ It is a single page with no router. Data comes from https://jsonplaceholder.typi
 
 ## Docs
 
-- [README](README.md): how to run it, the decisions behind it, the tests, the Lighthouse results and what comes next (in Spanish)
-- [AI log](AI_LOG.md): what the AI was asked in each phase, what was accepted and what was corrected (in Spanish)
+- [README](https://github.com/Oel-Estrada/postboard/blob/main/README.md): how to run it, the decisions behind it, the tests, the Lighthouse results and what comes next (in Spanish)
+- [AI log](https://github.com/Oel-Estrada/postboard/blob/main/AI_LOG.md): what the AI was asked in each phase, what was accepted and what was corrected (in Spanish)
