@@ -9,6 +9,9 @@ export const messages = {
   app: {
     title: 'Postboard',
   },
+  common: {
+    tryAgain: 'Try again',
+  },
   users: {
     searchLabel: 'Search users',
     usernameHandle: (username: string) => `@${username}`,
