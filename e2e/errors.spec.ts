@@ -1,7 +1,10 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './test'
 import { messages } from '../src/i18n/messages'
 import { users } from '../src/test/fixtures'
 import { mockApi } from './mockApi'
+
+// The browser logs the 500 this spec causes on purpose; nothing else may be logged.
+test.use({ allowedConsoleErrors: [/Failed to load resource: .* status of 500/] })
 
 test('recovers from an API error with Try again', async ({ page }) => {
   const api = await mockApi(page, { usersFailing: true })

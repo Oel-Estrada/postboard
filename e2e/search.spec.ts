@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './test'
 import { messages } from '../src/i18n/messages'
 import { posts, users } from '../src/test/fixtures'
 import { mockApi } from './mockApi'

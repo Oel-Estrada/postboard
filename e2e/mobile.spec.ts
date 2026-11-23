@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import { expect, test } from './test'
 import { messages } from '../src/i18n/messages'
 import { users } from '../src/test/fixtures'
 import { mockApi } from './mockApi'
