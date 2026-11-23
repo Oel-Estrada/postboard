@@ -84,7 +84,8 @@
     }
 
     /* The folder tab and its monogram settle a little slower than a hover. */
-    :where([aria-current="true"], li > button > span[aria-hidden="true"]) {
+    /* .user-monogram is the initials circle in UserList. */
+    :where([aria-current="true"], .user-monogram) {
       transition-property: background-color, border-color, color;
       transition-duration: 200ms;
       transition-timing-function: ease-out;

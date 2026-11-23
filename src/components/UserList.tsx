@@ -44,7 +44,7 @@ export function UserList({ users, selectedUserId, onSelect }: UserListProps) {
             >
               <span
                 aria-hidden="true"
-                className={`flex size-9 shrink-0 items-center justify-center rounded-full border text-sm font-semibold ${
+                className={`user-monogram flex size-9 shrink-0 items-center justify-center rounded-full border text-sm font-semibold ${
                   isSelected ? 'border-accent bg-accent text-card' : 'border-rule bg-paper text-muted'
                 }`}
               >
