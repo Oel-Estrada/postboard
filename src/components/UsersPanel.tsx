@@ -26,7 +26,7 @@ export function UsersPanel({ selectedUserId, onSelectUser }: UsersPanelProps) {
   const [query, setQuery] = useState('')
 
   return (
-    <div>
+    <div className="flex flex-col gap-4 md:pr-4">
       <UserSearch value={query} onChange={setQuery} />
       {users.status === 'loading' && <LoadingMessage>{messages.users.loading}</LoadingMessage>}
       {users.status === 'error' && (
@@ -54,7 +54,7 @@ function SearchResults({ users, query, selectedUserId, onSelectUser }: SearchRes
     <>
       <UserList users={users} selectedUserId={selectedUserId} onSelect={onSelectUser} />
       {/* Always rendered, so screen readers announce the text when it appears. */}
-      <p aria-live="polite">
+      <p aria-live="polite" className="text-sm text-muted">
         {users.length === 0 ? messages.users.noUsersMatch(query.trim()) : null}
       </p>
     </>

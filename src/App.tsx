@@ -43,13 +43,16 @@ function App() {
       <title>
         {selectedUser ? messages.app.pageTitle(selectedUser.name) : messages.app.title}
       </title>
-      <header className="px-4 py-3">
-        <h1>{messages.app.title}</h1>
+      <header className="px-4 pt-5 pb-4 md:px-6">
+        <h1 className="text-xl font-semibold">{messages.app.title}</h1>
       </header>
-      <main className="px-4 md:grid md:grid-cols-[20rem_1fr] md:gap-6">
+      {/* No gap between the columns: the selected user's tab has to touch the panel. */}
+      <main className="px-4 pb-10 md:grid md:grid-cols-[18rem_minmax(0,1fr)] md:px-6">
         <div
           ref={usersColumnRef}
-          className={mobileView === 'list' ? 'block' : 'hidden md:block'}
+          // Sticky only when the whole column fits in the viewport; on a short
+          // window it would hide the last users.
+          className={`${mobileView === 'list' ? 'block' : 'hidden md:block'} md:self-start md:[@media(min-height:45rem)]:sticky md:[@media(min-height:45rem)]:top-4`}
         >
           <UsersPanel
             selectedUserId={selectedUser?.id ?? null}
@@ -62,16 +65,19 @@ function App() {
               {messages.app.backToUsers}
             </button>
           )}
-          {selectedUser ? (
-            // The key gives each user a fresh panel: form, optimistic posts and requests.
-            <PostsPanel
-              key={selectedUser.id}
-              user={selectedUser}
-              headingRef={detailHeadingRef}
-            />
-          ) : (
-            <p>{messages.app.selectUser}</p>
-          )}
+          {/* Stretches to the row, so the panel is never shorter than the tab beside it. */}
+          <div className="rounded-md border border-rule bg-card p-4 md:h-full md:p-6">
+            {selectedUser ? (
+              // The key gives each user a fresh panel: form, optimistic posts and requests.
+              <PostsPanel
+                key={selectedUser.id}
+                user={selectedUser}
+                headingRef={detailHeadingRef}
+              />
+            ) : (
+              <p className="text-muted">{messages.app.selectUser}</p>
+            )}
+          </div>
         </div>
       </main>
     </>
