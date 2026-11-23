@@ -1,7 +1,7 @@
 import { useActionState, useId, useLayoutEffect, useRef } from 'react'
 import { messages } from '../i18n/messages'
 import { validatePost, type PostFormErrors } from '../lib/validatePost'
-import type { PostFormValues } from '../schemas'
+import { postFormSchema, type PostFormValues } from '../schemas'
 import { SubmitButton } from './SubmitButton'
 
 interface PostFormProps {
@@ -63,7 +63,8 @@ export function PostForm({ onPublish }: PostFormProps) {
     }
 
     try {
-      await onPublish({ title: typed.title.trim(), body: typed.body.trim() })
+      // The schema's output is what was validated: trimmed by the same rule.
+      await onPublish(postFormSchema.parse(typed))
       return { errors: {}, submitted: emptyValues, published: true, publishCount: publishCount + 1 }
     } catch {
       return {
