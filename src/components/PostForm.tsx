@@ -1,4 +1,4 @@
-import { useActionState, useEffect, useId, useRef } from 'react'
+import { useActionState, useId, useLayoutEffect, useRef } from 'react'
 import { messages } from '../i18n/messages'
 import { validatePost, type PostFormErrors } from '../lib/validatePost'
 import type { PostFormValues } from '../schemas'
@@ -53,8 +53,11 @@ export function PostForm({ onPublish }: PostFormProps) {
     }
   }
 
-  // After a failed validation, focus goes to the first field to fix.
-  useEffect(() => {
+  // After a failed validation, focus goes to the first field to fix. A layout
+  // effect runs in the same commit that shows the errors, so focus arrives with
+  // them; a passive effect can run later, leaving focus on <body> meanwhile
+  // (the submit button was disabled while the action ran).
+  useLayoutEffect(() => {
     if (state.errors.title) titleRef.current?.focus()
     else if (state.errors.body) bodyRef.current?.focus()
   }, [state])
