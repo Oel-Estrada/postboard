@@ -30,5 +30,7 @@ test('finds a user by name and opens their posts', async ({ page }) => {
   await expect(page).toHaveTitle(messages.app.pageTitle(leanne.name))
   // Static metadata in index.html: a description, and the browser UI in the paper colour.
   await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /\w/)
-  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#eef1f4')
+  await expect(
+    page.locator('meta[name="theme-color"][media="(prefers-color-scheme: light)"]'),
+  ).toHaveAttribute('content', '#eef1f4')
 })

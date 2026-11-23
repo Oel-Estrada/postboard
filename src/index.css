@@ -57,8 +57,30 @@
 
 @layer base {
   :root {
-    /* Light palette only: native controls and scrollbars stay light too. */
-    color-scheme: light;
+    /* Native controls, scrollbars and the canvas follow the system theme too. */
+    color-scheme: light dark;
+
+    /*
+     * Dark palette: only the colour tokens change, so no component knows about
+     * it. Same roles as in light: paper is the page, card the raised surfaces
+     * (lighter here, as elevation reads in the dark), accent stays the 10%.
+     * Contrast, measured: ink 14.49:1 on paper and 12.83:1 on card; muted
+     * 7.56:1 and 6.69:1 (also as control borders and scrollbar thumb); card
+     * text on accent 7.42:1; danger 8.14:1 and 7.20:1; success 9.84:1 and
+     * 8.72:1; accent focus ring 8.38:1 on paper and 7.42:1 on card.
+     */
+    @media (prefers-color-scheme: dark) {
+      --color-paper: #121922;
+      --color-card: #1b2430;
+      --color-ink: #e4e9f0;
+      --color-muted: #a3aab5;
+      --color-rule: #2f3b4b;
+      --color-accent: #8cb6e6;
+      /* A light accent gets lighter on hover, not darker. */
+      --color-accent-deep: color-mix(in oklab, var(--color-accent) 80%, white);
+      --color-danger: #f4978e;
+      --color-success: #7fd39b;
+    }
   }
 
   body {
