@@ -12,7 +12,9 @@ formulario validado. Los posts creados se conservan en `localStorage`.
 **Arquitectura:** es una SPA de una sola pantalla, mobile-first. En móvil se pasa de la lista al
 detalle; desde `md` hay dos columnas (maestro-detalle).
 - **Capa de API:** usa `fetch` nativo y un cliente común que convierte `res.ok === false` en
-  error.
+  error. Cada función de la API valida lo que recibe con su esquema de zod.
+- **Datos de fuera:** las respuestas de la API, el formulario y `localStorage` se validan con
+  esquemas de zod, y sus tipos se infieren de ellos.
 - **Carga de datos:** hooks propios con `useEffect` + `AbortController`.
 - **Formulario:** usa las actions de React 19 (`useActionState`, `useFormStatus` y
   `useOptimistic`).
@@ -20,7 +22,7 @@ detalle; desde `md` hay dos columnas (maestro-detalle).
 - **Selección:** el usuario seleccionado vive en el estado de `App`; no hay router.
 
 **Stack:** pnpm, Vite, React 19, TypeScript `strict`, Tailwind CSS v4 (`@tailwindcss/vite`),
-Vitest, Testing Library, jsdom, MSW y Playwright (solo Chromium).
+zod 4, Vitest, Testing Library, jsdom, MSW y Playwright (solo Chromium).
 
 **Especificación:** el enunciado y las reglas de `CLAUDE.md`, junto con las decisiones de diseño
 de este documento (sección 1).
@@ -45,6 +47,7 @@ mías y van marcadas como tales.
 | Formulario (P2b) | **Actions de React 19**: `<form action>` + `useActionState`, `useFormStatus` y `useOptimistic` | Un `onSubmit` con estado manual y un hook `useCreatePost`: es más código para lo mismo, y React 19 ya resuelve el estado pendiente, el reset y la vuelta atrás si falla. |
 | Carga de datos (P2b) | **`useEffect` + `AbortController`** en hooks propios | `use()` + Suspense: sin una caché, cada render repetiría la petición. `useTransition`/`useDeferredValue` en la búsqueda: con 10 usuarios no aportan. |
 | Textos de la interfaz (P3) | **Centralizados en `src/i18n/messages.ts`**, sin librería | Literales en cada componente: un cambio de texto obliga a tocar el componente y todos sus tests. Una librería de i18n (`react-intl`, `i18next`): dependencia nueva para un solo idioma que el enunciado no pide. |
+| Datos de fuera (P4) | **Esquemas de zod** en las tres fronteras (API, formulario y `localStorage`), con los tipos inferidos (`z.infer`) | Validar a mano (type guards y `if` en el formulario): cada frontera tendría su propio estilo, y el tipo y la comprobación se escriben por separado y pueden desincronizarse. No validar la API (`res.json() as T`): confía a ciegas, y una respuesta con otra forma rompería la interfaz lejos de su causa. |
 
 ### Decisiones mías (puedes corregirlas)
 
@@ -76,7 +79,11 @@ mías y van marcadas como tales.
 - **Fuentes del sistema.** Con Google Fonts, los E2E tocarían la red real; con `@fontsource`
   tendríamos una dependencia nueva.
 - **Los errores de red y HTTP muestran el mismo texto** en la interfaz. El detalle técnico
-  queda en el `Error`, no en pantalla.
+  queda en el `Error`, no en pantalla. Una respuesta con forma inesperada (`ZodError`) es un
+  error de carga más: mismo texto y «Try again».
+- **Los esquemas solo describen lo que usa la app.** `z.object` de zod 4 descarta las claves
+  que no están en el esquema, así que los objetos de la API llegan recortados (sin `address`,
+  `phone`…).
 - **«Try again»** en cada error de carga.
 
 ### Dirección visual: «Fichero de oficina»
@@ -166,12 +173,15 @@ Se aplican a todas las piezas y salen de `CLAUDE.md`:
   `AbortController`.
 - La búsqueda filtra en el cliente, sin distinguir mayúsculas y quitando espacios.
 - La validación rechaza campos vacíos o con solo espacios.
+- Lo que entra de fuera (API, formulario y `localStorage`) se valida con un esquema de zod, y su
+  tipo se infiere del esquema (`z.infer`). Los mensajes de error del formulario salen de
+  `messages`.
 - Accesibilidad: un `<label>` por input; `aria-describedby` entre cada input y su error;
   `role="alert"` en los errores; `role="status"` o `aria-live` en las cargas.
 - React 19: en los formularios se prefieren las actions; la carga de datos va en hooks con
   `useEffect` + `AbortController`.
-- `localStorage` con lectura defensiva: `try/catch`, `JSON.parse` protegido, type guard y claves
-  versionadas. Lo guardado se pinta siempre como texto.
+- `localStorage` con lectura defensiva: `try/catch`, `JSON.parse` protegido, esquema de zod
+  (`safeParse`) y claves versionadas. Lo guardado se pinta siempre como texto.
 - Mobile-first: áreas táctiles de al menos 44px y sin scroll horizontal a 320px.
 - Navegadores: Baseline «Widely available» sin fallback; «Newly available» solo con detección
   y un fallback simple.
@@ -251,12 +261,26 @@ export const messages = {
   // common, form …
 }
 
-// src/types.ts
-export interface User { id: number; name: string; username: string; email: string; company: { name: string } }
-export interface Post { userId: number; id: number; title: string; body: string }
-export interface NewPost { userId: number; title: string; body: string }
+// src/schemas.ts — every schema for data that comes from outside, each next to its inferred type
+export const userSchema = z.object({
+  id: z.number(), name: z.string(), username: z.string(), email: z.string(),
+  company: z.object({ name: z.string() }),
+})
+export type User = z.infer<typeof userSchema>
+export const postSchema = z.object({ userId: z.number(), id: z.number(), title: z.string(), body: z.string() })
+export type Post = z.infer<typeof postSchema>
+export type NewPost = Omit<Post, 'id'>   // what createPost sends; derived, so it cannot drift
 /** Post with a React key that is unique even when the API repeats ids (POST always returns 101). */
-export interface PostEntry extends Post { key: string }
+export const postEntrySchema = postSchema.extend({ key: z.string() })
+export type PostEntry = z.infer<typeof postEntrySchema>
+/** Form fields; `trim().min(1, …)` rejects empty or whitespace-only values. */
+export const postFormSchema = z.object({
+  title: z.string().trim().min(1, messages.form.titleRequired),
+  body: z.string().trim().min(1, messages.form.bodyRequired),
+})
+export type PostFormValues = z.infer<typeof postFormSchema>
+
+// src/types.ts — internal types that are never validated (nothing outside produces them)
 /** A post on screen; `pending` while its POST is in flight (optimistic). */
 export interface DisplayPost extends PostEntry { pending?: boolean }
 export type AsyncState<T> =
@@ -264,14 +288,14 @@ export type AsyncState<T> =
   | { status: 'success'; data: T }
   | { status: 'error'; error: Error }
 
-// src/api/client.ts
+// src/api/client.ts — unchanged by zod: it only fetches; each API function parses what it gets
 export const API_BASE_URL = 'https://jsonplaceholder.typicode.com'
 export class HttpError extends Error { readonly status: number }
 export function request<T>(path: string, init?: RequestInit): Promise<T>
 
-// src/api/users.ts
-export function getUsers(signal?: AbortSignal): Promise<User[]>
-// src/api/posts.ts
+// src/api/users.ts — z.array(userSchema).parse(await request<unknown>('/users', { signal }))
+export function getUsers(signal?: AbortSignal): Promise<User[]>        // throws ZodError on an unexpected shape
+// src/api/posts.ts — z.array(postSchema).parse(…) and postSchema.parse(…)
 export function getPostsByUser(userId: number, signal?: AbortSignal): Promise<Post[]>
 export function createPost(input: NewPost, signal?: AbortSignal): Promise<Post>
 
@@ -283,13 +307,12 @@ export function getInitials(name: string): string
 export const MD_BREAKPOINT_REM = 48
 export const NARROW_VIEWPORT_QUERY = `(width < ${MD_BREAKPOINT_REM}rem)`
 export function isNarrowViewport(): boolean            // matchMedia(NARROW_VIEWPORT_QUERY), false if unavailable
-export interface PostFormValues { title: string; body: string }
 export type PostFormErrors = Partial<Record<keyof PostFormValues | 'form', string>>
-export function validatePost(values: PostFormValues): PostFormErrors   // only 'title' | 'body'
+export function validatePost(values: PostFormValues): PostFormErrors   // postFormSchema.safeParse; only 'title' | 'body'
 // src/lib/createdPostsStorage.ts
 export const CREATED_POSTS_KEY_PREFIX = 'postboard:created-posts:v1'
 export function getCreatedPostsKey(userId: number): string             // `${prefix}:${userId}`
-export function isPostEntry(value: unknown): value is PostEntry
+export function isPostEntry(value: unknown): value is PostEntry        // postEntrySchema.safeParse(value).success
 export function getBrowserStorage(): Storage | null                    // null if access throws
 export function readCreatedPosts(storage: Storage | null, userId: number): PostEntry[]
 export function writeCreatedPosts(storage: Storage | null, userId: number, posts: PostEntry[]): boolean
@@ -309,6 +332,10 @@ PostForm    { onPublish: (values: PostFormValues) => Promise<void> } // rejects 
 interface PostFormState { errors: PostFormErrors; submitted: PostFormValues; published: boolean }
 ```
 
+**Dónde viven los esquemas:** todos en `src/schemas.ts`, cada uno junto a su tipo inferido,
+porque así las fronteras de la app se revisan en un solo archivo y el tipo no puede separarse
+de su validación. `src/types.ts` queda solo para los tipos internos que nada de fuera produce.
+
 **Claves de React:**
 - Un post de la API usa `post-{id}`.
 - Un post creado usa `crypto.randomUUID()`, generado una sola vez en `PostsPanel` y compartido
@@ -327,7 +354,8 @@ src/
   lib/         filterUsersByName.ts, getInitials.ts, breakpoints.ts, isNarrowViewport.ts,
                validatePost.ts, createdPostsStorage.ts                (+ *.test.ts)
   test/        setup.ts, server.ts, server.test.ts, handlers.ts, fixtures.ts
-  types.ts, App.tsx, App.integration.test.tsx, main.tsx, index.css
+  schemas.ts (esquemas de zod y sus tipos), types.ts (tipos internos),
+  App.tsx, App.integration.test.tsx, main.tsx, index.css
 e2e/           mockApi.ts, search.spec.ts, persistence.spec.ts, errors.spec.ts, mobile.spec.ts
 ```
 
@@ -400,15 +428,15 @@ Cada una tiene un test en la pieza que la resuelve.
 
 ## 8. Pirámide de tests
 
-Presupuesto orientativo: ~30 unitarios, ~10 de integración y 4 E2E. Salen **33 unitarios, 14 de
-integración y 4 E2E (51)**. Pasan un poco del presupuesto porque cada pieza (y cada componente)
+Presupuesto orientativo: ~30 unitarios, ~10 de integración y 4 E2E. Salen **34 unitarios, 14 de
+integración y 4 E2E (52)**. Pasan un poco del presupuesto porque cada pieza (y cada componente)
 se commitea con al menos un test propio. Esta tabla irá al README.
 
 | Capa | Pieza | Archivo | Tests | Qué defienden |
 | --- | --- | --- | --- | --- |
 | Unitario | P3.3 Servidor MSW | `test/server.test.ts` | 1 | Ningún test toca la red real |
 | Unitario | P4.1 `request` | `api/client.test.ts` | 4 | JSON, error HTTP, error de red y cancelación (una sola vez para toda la API) |
-| Unitario | P4.2 `getUsers` | `api/users.test.ts` | 1 | Ruta y método |
+| Unitario | P4.2 `getUsers` | `api/users.test.ts` | 2 | Ruta y método; respuesta con forma inesperada rechazada (una sola vez para toda la API) |
 | Unitario | P4.3 `getPostsByUser` | `api/posts.test.ts` | 1 | Ruta y `userId` |
 | Unitario | P4.4 `createPost` | `api/posts.test.ts` | 1 | Método, cabecera y cuerpo JSON |
 | Unitario | P5.1 `filterUsersByName` | `lib/filterUsersByName.test.ts` | 2 | Búsqueda vacía; mayúsculas y espacios |
@@ -425,7 +453,7 @@ se commitea con al menos un test propio. Esta tabla irá al README.
 | Unitario | P6.4 `useCreatedPosts` | `hooks/useCreatedPosts.test.ts` | 2 | Lee y guarda; escribe con su `userId` tras desmontar |
 | Unitario | P6.5 `SubmitButton` | `components/SubmitButton.test.tsx` | 1 | Estado pendiente con `useFormStatus` |
 | Unitario | P6.7 `PostList` | `components/PostList.test.tsx` | 3 | XSS como texto; post pendiente; lista vacía |
-| **Unitarios** | | | **33** | |
+| **Unitarios** | | | **34** | |
 | Integración | P5.8 `UsersPanel` | `components/UsersPanel.integration.test.tsx` | 2 | Carga → usuarios; búsqueda y «sin resultados» |
 | Integración | P5.10 `App` (layout) | `App.integration.test.tsx` | 1 | Lista → detalle → lista con el foco en móvil |
 | Integración | P5.11 `App` (`<title>`) | `App.integration.test.tsx` | 1 | Título de la página por usuario |
@@ -438,7 +466,7 @@ se commitea con al menos un test propio. Esta tabla irá al README.
 | E2E | P8.3 Errores | `e2e/errors.spec.ts` | 1 | Error de la API y «Try again» lo recupera |
 | E2E | P8.4 Móvil | `e2e/mobile.spec.ts` | 1 | 320px: lista → detalle → «Back to users», sin scroll horizontal |
 | **E2E** | | | **4** | |
-| **Total** | | | **51** | |
+| **Total** | | | **52** | |
 
 El test trivial de `App` de P3.1 no cuenta: en P5.10 se convierte en el test de integración del
 layout.
@@ -544,33 +572,45 @@ layout.
 
 ### P4.2 `getUsers`
 
-- **Archivos:** `src/types.ts` (`User`, `AsyncState`), `src/api/users.ts`,
-  `src/api/users.test.ts`, `src/test/fixtures.ts` (`users`) y `src/test/handlers.ts`
-  (`GET /users`).
-- **Test** (los errores ya los cubre `request`):
-  - `it('requests GET /users and returns the users')`: el handler comprueba el método y la ruta,
-    y el resultado es igual a `users`.
+- **Archivos:** `package.json` y `pnpm-lock.yaml` (`zod`, que se instala aquí porque es su
+  primer uso), `src/schemas.ts` (`userSchema`, `User`), `src/types.ts` (`AsyncState`),
+  `src/api/users.ts`, `src/api/users.test.ts`, `src/test/fixtures.ts` (`users`) y
+  `src/test/handlers.ts` (`GET /users`).
+- **Firma:** `z.array(userSchema).parse(await request<unknown>('/users', { signal }))`.
+- **Cómo se comprueba la petición (P4.2–P4.4):** los tests usan los handlers por defecto de
+  `handlers.ts` y capturan la petición con el evento `request:start` de `server.events`,
+  guardando `request.clone()` para no consumir el cuerpo antes que el handler. El listener se
+  quita en `afterEach`, como en `server.test.ts`.
+- **Tests** (los errores HTTP, de red y la cancelación ya los cubre `request`):
+  - `it('requests GET /users and returns the users')`: la petición capturada es
+    `GET {API_BASE_URL}/users` y el resultado es igual a `users`.
+  - `it('rejects a response with an unexpected shape')`: un handler devuelve usuarios con otra
+    forma (por ejemplo, `id` como string) y `getUsers()` rechaza con un `ZodError`. Se prueba
+    una sola vez para toda la API: `getPostsByUser` y `createPost` usan el mismo `parse`.
 - [ ] **Commit:** `feat(api): add getUsers`
 
 ### P4.3 `getPostsByUser`
 
-- **Archivos:** `src/types.ts` (`Post`, `PostEntry`), `src/api/posts.ts`,
-  `src/api/posts.test.ts`, `fixtures.ts` (`posts`) y `handlers.ts` (`GET /posts`).
-- **Test** (los errores ya los cubre `request`):
-  - `it('requests GET /posts filtered by userId')`: el handler recibe `GET /posts?userId=1` y el
-    resultado son los 2 posts de Leanne.
+- **Archivos:** `src/schemas.ts` (`postSchema`, `Post`, `postEntrySchema`, `PostEntry`),
+  `src/api/posts.ts`, `src/api/posts.test.ts`, `fixtures.ts` (`posts`) y `handlers.ts`
+  (`GET /posts`).
+- **Firma:** `z.array(postSchema).parse(await request<unknown>(`/posts?userId=${userId}`, { signal }))`.
+- **Test** (los errores y la forma inesperada ya los cubren `request` y `getUsers`):
+  - `it('requests GET /posts filtered by userId')`: la petición capturada es
+    `GET /posts?userId=1` y el resultado son los 2 posts de Leanne.
 - [ ] **Commit:** `feat(api): add getPostsByUser`
 
 ### P4.4 `createPost`
 
-- **Archivos:** `src/types.ts` (`NewPost`), `src/api/posts.ts`, `src/api/posts.test.ts` y
-  `handlers.ts` (`POST /posts`).
+- **Archivos:** `src/schemas.ts` (`NewPost`, derivado de `Post`), `src/api/posts.ts`,
+  `src/api/posts.test.ts` y `handlers.ts` (`POST /posts`).
 - **Firma:** `POST /posts` con `body: JSON.stringify(input)` y
-  `headers: { 'Content-Type': 'application/json; charset=UTF-8' }`.
-- **Test** (los errores ya los cubre `request`):
-  - `it('sends a POST /posts with the new post as JSON')`: el handler comprueba el método, la
-    cabecera `Content-Type` y el cuerpo `{ userId: 1, title, body }`; el resultado tiene
-    `id: 101`.
+  `headers: { 'Content-Type': 'application/json; charset=UTF-8' }`. La respuesta se valida con
+  `postSchema.parse`.
+- **Test** (los errores y la forma inesperada ya los cubren `request` y `getUsers`):
+  - `it('sends a POST /posts with the new post as JSON')`: la petición capturada tiene el
+    método, la cabecera `Content-Type` y el cuerpo `{ userId: 1, title, body }` (leído de
+    `request.clone()`); el resultado tiene `id: 101`.
 - [ ] **Commit:** `feat(api): add createPost`
 
 ### Cierre de P4
@@ -758,7 +798,12 @@ layout.
 
 ### P6.1 `validatePost`
 
-- **Archivos:** `src/lib/validatePost.ts` y `.test.ts`.
+- **Archivos:** `src/lib/validatePost.ts` y `.test.ts`, y `src/schemas.ts` (`postFormSchema`,
+  `PostFormValues`).
+- **Comportamiento:** el mismo contrato de la sección 4. `validatePost` hace
+  `postFormSchema.safeParse(values)` y, si falla, devuelve el primer mensaje de cada campo
+  (`z.flattenError(error).fieldErrors`). `trim().min(1, …)` rechaza los campos vacíos o con
+  solo espacios, y los mensajes del esquema salen de `messages`.
 - **Textos:** `form.titleRequired` y `form.bodyRequired`.
 - **Test** (que los valores válidos no den error lo cubre el envío correcto de `PostForm`):
   - `it('requires a title and a text, also when they only contain spaces')`:
@@ -795,8 +840,9 @@ Son funciones puras: reciben el `Storage` como parámetro y no tocan globales, s
       `JSON.parse` falla o si el valor no es un array.
     - Si es un array, se queda con las entradas que pasan `isPostEntry` y cuyo `userId` es el
       pedido.
-  - `isPostEntry`: comprueba que `userId` e `id` son números finitos y que `title`, `body` y
-    `key` son strings.
+  - `isPostEntry`: `postEntrySchema.safeParse(value).success` (números en `userId` e `id`;
+    strings en `title`, `body` y `key`). Sustituye a la comprobación escrita a mano; los tests
+    no cambian.
   - `writeCreatedPosts`: hace `setItem` en `try/catch` y devuelve `false` si falla (cuota llena
     o bloqueo).
   - `getBrowserStorage`: devuelve `window.localStorage` dentro de un `try/catch`, porque solo

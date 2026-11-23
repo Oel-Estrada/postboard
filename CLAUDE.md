@@ -35,6 +35,7 @@ Commits progresivos que muestren cómo pienso; nunca un único commit con todo.
   `@testing-library/user-event`, `@testing-library/jest-dom` y jsdom. **MSW** para simular la red.
 - **E2E:** `@playwright/test`, solo Chromium, en su propia fase.
 - **Datos:** `fetch` nativo y hooks propios.
+- **Validación:** **zod** (v4) para todo lo que entra de fuera.
 - No se añade ninguna dependencia fuera de esta lista sin explicar antes por qué y recibir
   aprobación explícita.
 
@@ -59,8 +60,9 @@ El objetivo es demostrar que se sabe testear en las tres capas, no acumular cant
 ### Cómo se prueba cada cosa
 
 - **API:** el error HTTP, el error de red y la cancelación con la señal se prueban una sola vez,
-  en el cliente común (`request`). Cada función de la API solo comprueba su ruta, su método y
-  su cuerpo. Vitest + MSW.
+  en el cliente común (`request`). Que una respuesta con forma inesperada se rechaza se prueba
+  una sola vez, en `getUsers`. Cada función de la API solo comprueba su ruta, su método y su
+  cuerpo. Vitest + MSW.
 - **Hooks:** `renderHook` + MSW, cubriendo carga, éxito, error y, si aplica, cancelación con
   `AbortController`.
 - **Componentes:** Testing Library + user-event, buscando por rol, label o texto. `data-testid`
@@ -90,6 +92,9 @@ El objetivo es demostrar que se sabe testear en las tres capas, no acumular cant
   - `role="status"` / `aria-live` en los indicadores de carga.
 - La búsqueda filtra en el cliente, sin distinguir mayúsculas y quitando espacios.
 - La validación rechaza campos vacíos o que solo contienen espacios.
+- **Datos que entran de fuera** (respuestas de la API, formulario y `localStorage`): se validan
+  con un esquema de zod. Sus tipos se infieren del esquema (`z.infer`), nunca se escriben
+  aparte. Los mensajes de error del formulario salen de `messages`.
 
 ### Textos de la interfaz
 
@@ -121,8 +126,8 @@ El objetivo es demostrar que se sabe testear en las tres capas, no acumular cant
 
 - El acceso a `localStorage` y todas sus lecturas y escrituras van en `try/catch`: puede no
   estar disponible, estar lleno o lanzar `SecurityError`.
-- `JSON.parse` siempre protegido, y la forma de los datos se valida con un type guard antes de
-  usarlos. Los datos no válidos se ignoran sin romper la app.
+- `JSON.parse` siempre protegido, y la forma de los datos se valida con su esquema de zod
+  (`safeParse`) antes de usarlos. Los datos no válidos se ignoran sin romper la app.
 - Claves con prefijo y versión (`postboard:<nombre>:v1`) para poder cambiar el formato sin
   leer datos antiguos.
 - Lo guardado se pinta siempre como texto (nunca `dangerouslySetInnerHTML`).
