@@ -263,3 +263,93 @@ explícito y una pirámide de tests.
    ahorrar tests: cada componente se queda con su test.
 5. **Orden de los commits.** Acepté el orden docs → P3.2 cuando la IA no siguió el que le pedí
    (el commit de P3.2 antes que el de la pirámide).
+
+## P4 — Capa de API
+
+**Fecha:** 2026-11-23 12:12 (UTC+03:00)
+
+**Duración:** 12:12–13:27 (≈75 min)
+
+**Qué pedí:** ejecutar solo la fase P4 del plan (P4.1 a P4.4 y su cierre) con
+`superpowers:executing-plans`, en la misma sesión y sin subagentes, y con
+`superpowers:test-driven-development`:
+
+- Por cada pieza, primero el test en rojo sin tocar la red real, después el código mínimo y el
+  refactor, y un commit por pieza solo con sus archivos.
+- Los tests del plan: `request` cubre una vez el éxito, el error HTTP, el error de red y la
+  cancelación; `getUsers`, `getPostsByUser` y `createPost` solo su ruta, su método y su cuerpo.
+- Antes de escribir código, consultar en Context7 la API de MSW 3 (`http`, `HttpResponse`,
+  `delay` y cómo leer el método, la query y el cuerpo en un handler).
+- Parar y explicarlo si el test de cancelación fallaba por el entorno (jsdom y el `fetch` de
+  Node) y no por el código.
+
+Durante la fase cambié el planteamiento con varios mensajes (todos literales en
+`docs/prompts.md`): validar con zod, la API clásica de zod y que cada tipo entre con su primer
+uso.
+
+**Qué propuso la IA:**
+
+- De Context7 y de los tipos instalados de MSW 3.0.7: `http`, `HttpResponse` y `delay` se
+  importan de `msw`; el resolver recibe `{ request, params, cookies }`; la query se lee con
+  `new URL(request.url).searchParams` (MSW la ignora al buscar el handler) y el cuerpo con
+  `request.json()`.
+- `request` con `HttpError` (con `status`) para `res.ok === false`, dejando pasar sin envolver
+  los errores de red y el `AbortError`. El test de cancelación pasó con jsdom y el `fetch` de
+  Node, así que no hubo que tocar la configuración.
+- **Mutaciones en cada pieza:** como el rojo de cada pieza era «falta el módulo», romper el
+  código a propósito (sin comprobar `res.ok`, sin pasar la señal, otro método, otra ruta, sin
+  cabecera, otro cuerpo, un esquema equivocado) y comprobar que falla solo el test que toca.
+- **Una mutación sobrevive en P4.3:** un `userId=1` escrito a mano en `getPostsByUser` pasa el
+  test, porque con un solo caso no se distingue. No se añadió un segundo caso (sería una
+  variación del mismo test): lo cubre en P6.2 el test de `useUserPosts` «aborts the previous
+  request when userId changes», que pide los usuarios 1 y 2 y exige que `data` sea solo de
+  Ervin.
+- **Probar los handlers compartidos:** los tests de P4.2–P4.4 usan los handlers por defecto de
+  `handlers.ts` y capturan la petición con el evento `request:start`, en vez de repetir los
+  handlers en cada test.
+- **Refactor de `recordRequests()`** en `posts.test.ts`, cuando la captura se repitió en el
+  segundo test, con un solo `afterEach` que quita el listener.
+- Los datos de prueba son los registros reales de JSONPlaceholder (usuarios 1, 2, 3 y 10, y
+  posts 1, 2 y 11), descargados una vez con `curl`; los tests no tocan la red.
+- Con zod: de Context7, la versión 4.6.7 (`latest` en npm y con más de 24 h, así que cumple
+  `minimumReleaseAge`) y su API (`z.object`, `z.array`, `.trim().min(1, mensaje)`,
+  `parse`/`safeParse`, `z.flattenError` y `z.infer`). Propuso `src/schemas.ts` para todos los
+  esquemas, cada uno junto a su tipo, y `src/types.ts` solo para los tipos internos.
+- Medir el bundle con zod: en los commits de P4 no crece, porque la app aún no importa la capa
+  de API y Vite deja zod fuera. Importando `getUsers` de forma temporal en `main.tsx`:
+  - API clásica: 303,88 kB (92,42 kB gzip), **+23,8 kB gzip** (+35 %).
+  - `zod/mini`: 234,21 kB (73,42 kB gzip), **+4,8 kB gzip** (+7 %).
+
+  Recomendó `zod/mini`.
+- Verificación final: los cuatro comandos en HEAD (5 archivos y 10 tests) y también en cada
+  commit de código de la fase por separado, en un worktree temporal.
+
+**Qué acepté:**
+
+- Las mutaciones en cada pieza, incluida la que sobrevive en P4.3 y que cubrirá P6.2.
+- Probar los handlers compartidos con `request:start` y `request.clone()`.
+- El refactor de `recordRequests()`.
+
+**Qué corregí o rechacé (y por qué):**
+
+1. **Validar con zod todo lo que entra de fuera** (API, formulario y `localStorage`), con los
+   tipos inferidos de los esquemas, para que el tipo y la validación no puedan desincronizarse y
+   las tres fronteras se validen igual. `res.json() as T` confiaba a ciegas en la API. Fue en su
+   propio commit de docs (`docs: validate external data with zod`), con P4.2 guardado en un
+   stash mientras tanto. Se añadió un solo test, en `getUsers`, para la forma inesperada.
+2. **La API clásica de zod en vez de `zod/mini`**, a pesar de la medición (+23,8 kB frente a
+   +4,8 kB gzip): es la que conoce cualquier equipo y se lee mejor, y +24 kB gzip es aceptable
+   aquí. `zod/mini` irá en «qué haría con más tiempo».
+3. **Cada tipo y cada esquema entran en la pieza de su primer uso.** Si eso se aparta del plan,
+   se anota aquí como desviación, sin preguntar.
+4. **Al capturar las peticiones:** leer el cuerpo de `request.clone()` para no consumirlo antes
+   que el handler, y quitar los listeners después de cada test, como en `server.test.ts`.
+
+**Desviaciones del plan:**
+
+- `AsyncState` no entra en P4.2: pasa a P5.2 (`useUsers`), su primer uso.
+- `PostEntry` (y `postEntrySchema`) no entra en P4.3: pasa a P6.2 (`useUserPosts`), su primer uso.
+
+**Incidente:** al restaurar una mutación de P4.4, el modo automático de permisos bloqueó un
+`git checkout src/test/handlers.ts` que habría borrado el handler `POST /posts`, todavía sin
+commitear. Se restauró desde copias y no se perdió nada.

@@ -434,3 +434,148 @@ El matiz del punto 5 déjalo como está. Hecho esto, haz el commit
 `docs: log p3 prompt and ai decisions` sin volver a preguntarme y enséñame `git log --oneline`
 de la fase y `git status`.
 ```
+
+## P4 — Capa de API
+
+**Fecha:** 2026-11-23 12:12 (UTC+03:00)
+
+```text
+Antes de nada: añade al final de docs/prompts.md una sección "## P4 — Capa de API" con la
+fecha y la hora y este prompt COMPLETO y LITERAL, dentro de un bloque de código, sin resumirlo
+ni corregirlo. Igual que en P3, añade también, literal y con su hora, cada mensaje que te mande
+durante la fase. Todo eso va en el commit de docs que cierra la fase, con AI_LOG.md.
+
+No uses brainstorming ni writing-plans: el plan ya está aprobado en docs/plan.md.
+
+Lee CLAUDE.md y docs/plan.md. Ejecuta SOLO la fase P4 (P4.1 a P4.4 y su cierre) con
+superpowers:executing-plans (en esta misma sesión, sin subagentes) y
+superpowers:test-driven-development: por cada pieza, primero el test en rojo (enséñame que
+falla, sin tocar la red real), luego el código mínimo, luego refactor. Un commit por pieza,
+con su test y solo con los archivos de la pieza.
+Tests: los del plan (pirámide; no añadas otros sin decírmelo). `request` cubre una vez el
+éxito, el error HTTP (res.ok false), el error de red y la cancelación con AbortController;
+getUsers, getPostsByUser y createPost solo comprueban su ruta, su método y su cuerpo.
+Antes de escribir código, consulta en Context7 la API actual de MSW 3 para los handlers
+(http, HttpResponse, delay) y cómo leer el método, la query y el cuerpo dentro de un handler.
+Si el test de cancelación falla por el entorno de tests (por ejemplo, porque jsdom y el fetch
+de Node no se entienden con la señal) y no por el código, para y explícamelo antes de cambiar
+la configuración.
+En cada pieza, enséñame el rojo y la salida real de pnpm test, typecheck, lint y build, y
+espera mi OK antes de cada commit. Termina con superpowers:verification-before-completion.
+Al cerrar la fase, actualiza AI_LOG.md (con la línea **Duración:** inicio–fin de la fase) y
+prepara el commit de cierre `docs: log p4 prompt and ai decisions`; para antes de hacerlo.
+```
+
+### P4 - OK a P4.1 y enfoque de P4.2–P4.4
+
+**Fecha:** 2026-11-23 12:19 (UTC+03:00)
+
+```text
+OK al commit de P4.1. Muy bien la comprobación de mutaciones (romper el código a propósito y
+ver que falla solo el test que toca): anótala en AI_LOG como propuesta tuya aceptada.
+Para P4.2–P4.4 vale tu enfoque (handlers por defecto + request:start), con dos cuidados: lee
+el cuerpo con request.clone() para no consumirlo antes que el handler, y quita los listeners
+después de cada test, como en server.test.ts.
+Respóndeme en español a partir de ahora (AI_LOG y docs/prompts.md siguen en español, como
+dice CLAUDE.md).
+```
+
+### P4 - Validación con zod
+
+**Fecha:** 2026-11-23 12:28 (UTC+03:00)
+
+```text
+Cambio de planteamiento antes de cerrar P4.2: vamos a validar con zod todo lo que entra de
+fuera. Apruebo la dependencia `zod`. Motivo: un mismo enfoque valida las tres fronteras de la
+app: la respuesta de la API (hoy `res.json() as T` confía a ciegas), el formulario y lo que se
+lee de localStorage (sustituye la comprobación de tipos escrita a mano). Además, los tipos se
+infieren de los esquemas, así que el tipo y la validación no se pueden desincronizar.
+
+Antes de nada, consulta en Context7 la versión actual de zod y su API para: esquemas de objeto
+y de array, trim + min con mensaje propio, parse/safeParse y z.infer.
+
+1. Deja P4.2 sin commitear (no lo pierdas) y haz primero un commit de docs
+   `docs: validate external data with zod` que:
+   - En CLAUDE.md: añada zod al stack y esta regla: los datos que entran de fuera (API,
+     formulario, localStorage) se validan con un esquema de zod; sus tipos se infieren del
+     esquema (z.infer); los mensajes de error del formulario salen de messages.
+   - En docs/plan.md:
+     - la decisión en la sección 1, con lo descartado (validar a mano, no validar la API);
+     - los contratos de la sección 4: dónde viven los esquemas y sus tipos (elige un sitio y
+       justifícalo en una frase). `request` no cambia: cada función de la API hace parse de lo
+       que recibe;
+     - las piezas afectadas: P4.2–P4.4, P6.1 (validatePost con un esquema, mismo contrato y
+       mismos tests) y P6.3 (isPostEntry con safeParse);
+     - un solo test nuevo, en getUsers: que unos datos con forma inesperada se rechazan (no lo
+       repitas en cada función);
+     - la tabla de la pirámide actualizada.
+   Enséñame el diff resumido antes del commit.
+2. Después rehaz P4.2 con zod: instala zod en ese commit (es su primer uso) y añade el esquema
+   de User con su tipo inferido, getUsers validando la respuesta y el test nuevo. AsyncState
+   sale de este commit y entra en P5.2 con su primer uso (cada pieza añade solo lo que usa);
+   no cambies el plan por eso, anótalo en AI_LOG como desviación. Enséñame el rojo, las
+   mutaciones, la salida real de los cuatro comandos y cuánto crece el bundle con zod, y
+   espera mi OK.
+```
+
+### P4 - OK al commit de docs y tipos en su primer uso
+
+**Fecha:** 2026-11-23 12:45 (UTC+03:00)
+
+```text
+OK al commit de docs. Y sí: PostEntry igual que AsyncState. Regla general a partir de ahora:
+cada tipo y cada esquema entran en la pieza de su primer uso; si eso se aparta del plan, no me
+preguntes: anótalo en AI_LOG como desviación y sigue.
+Después rehaz P4.2 con zod desde el stash (cuando esté aplicado y comprobado, borra el stash y
+la copia de respaldo), y para antes del commit con el rojo, las mutaciones, la salida real de
+los cuatro comandos y cuánto crece el bundle con zod.
+```
+
+### P4 - zod clásico y OK a P4.2
+
+**Fecha:** 2026-11-23 12:53 (UTC+03:00)
+
+```text
+Sigue con la API clásica de zod: es la que conoce cualquier equipo y se lee mejor, y +24 kB
+gzip es aceptable aquí. Anota en AI_LOG la medición (clásica +23,8 kB gzip frente a zod/mini
++4,8 kB) y la decisión, y deja zod/mini en "qué haría con más tiempo". OK al commit de P4.2;
+sigue con P4.3.
+```
+
+### P4 - OK a P4.3
+
+**Fecha:** 2026-11-23 13:09 (UTC+03:00)
+
+```text
+OK al commit de P4.3. Anota en AI_LOG la mutación que sobrevive (userId escrito a mano) y que
+la cubre el test de cambio de usuario de useUserPosts en P6.2. Sigue con P4.4.
+```
+
+### P4 - OK a P4.4 y cierre de la fase
+
+**Fecha:** 2026-11-23 13:17 (UTC+03:00)
+
+```text
+OK al commit de P4.4. Después haz la verificación final de la fase y prepara el commit de
+cierre `docs: log p4 prompt and ai decisions`; para antes de hacerlo y enséñame el diff de
+docs/prompts.md y AI_LOG.md.
+En la entrada de P4 de AI_LOG, con su **Duración:**, que no falte:
+- Corregí yo: validar con zod todo lo que entra de fuera (API, formulario y localStorage),
+  con su commit de docs; la API clásica de zod frente a zod/mini, con la medición
+  (+23,8 kB frente a +4,8 kB gzip), y zod/mini a "qué haría con más tiempo"; que cada tipo y
+  esquema entre con su primer uso (AsyncState pasa a P5.2 y PostEntry a P6.2, como
+  desviaciones del plan).
+- Propuso la IA y acepté: las mutaciones en cada pieza (con la mutación de P4.3 que
+  sobrevive y que cubrirá P6.2); probar los handlers compartidos con request:start y
+  clone(); el refactor de recordRequests().
+- Incidente: el modo automático de permisos bloqueó un git checkout que habría borrado
+  trabajo sin commitear; se restauró desde copias y no se perdió nada.
+```
+
+### P4 - Hora de fin y OK al cierre
+
+**Fecha:** 2026-11-23 13:27 (UTC+03:00)
+
+```text
+Usa la hora del commit como fin, igual que en P3. OK al commit de cierre de P4.
+```
