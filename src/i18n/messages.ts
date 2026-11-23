@@ -27,5 +27,10 @@ export const messages = {
     bodyRequired: 'Enter the post text.',
     submit: 'Publish post',
     submitting: 'Publishing…',
+    heading: 'New post',
+    titleLabel: 'Title',
+    bodyLabel: 'Text',
+    published: 'Post published.',
+    publishError: "Couldn't publish the post. Try again.",
   },
 }
