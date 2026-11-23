@@ -21,16 +21,16 @@ export class HttpError extends Error {
  *
  * @param path - API path starting with `/`, including any query string.
  * @param init - Options passed to `fetch` (method, headers, body, signal…).
- * @returns The parsed JSON body.
+ * @returns The parsed JSON body, as `unknown`: callers validate it with a zod schema.
  * @throws {HttpError} When the response is not ok (`res.ok === false`).
  * @throws Network and abort errors (`AbortError`) as `fetch` raises them, unwrapped.
  */
-export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request(path: string, init?: RequestInit): Promise<unknown> {
   const res = await fetch(API_BASE_URL + path, init)
 
   if (!res.ok) {
     throw new HttpError(res.status, `Request to ${path} failed with status ${res.status}`)
   }
 
-  return (await res.json()) as T
+  return res.json()
 }

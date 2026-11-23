@@ -11,5 +11,5 @@ import { request } from './client'
  * @throws {ZodError} When the response does not match the expected shape.
  */
 export async function getUsers(signal?: AbortSignal): Promise<User[]> {
-  return z.array(userSchema).parse(await request<unknown>('/users', { signal }))
+  return z.array(userSchema).parse(await request('/users', { signal }))
 }

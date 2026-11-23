@@ -12,7 +12,7 @@ import { request } from './client'
  * @throws {ZodError} When the response does not match the expected shape.
  */
 export async function getPostsByUser(userId: number, signal?: AbortSignal): Promise<Post[]> {
-  return z.array(postSchema).parse(await request<unknown>(`/posts?userId=${userId}`, { signal }))
+  return z.array(postSchema).parse(await request(`/posts?userId=${userId}`, { signal }))
 }
 
 /**
@@ -26,7 +26,7 @@ export async function getPostsByUser(userId: number, signal?: AbortSignal): Prom
  * @throws {ZodError} When the response does not match the expected shape.
  */
 export async function createPost(input: NewPost, signal?: AbortSignal): Promise<Post> {
-  const created = await request<unknown>('/posts', {
+  const created = await request('/posts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json; charset=UTF-8' },
     body: JSON.stringify(input),
