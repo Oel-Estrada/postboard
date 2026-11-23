@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- The user list (the LCP) waits for GET /users: open that connection while JS loads.
+         crossorigin, because the API fetches are CORS and only then reuse it. -->
+    <link rel="preconnect" href="https://jsonplaceholder.typicode.com" crossorigin />
     <!-- Static, like <title>: the only UI text outside src/i18n/messages.ts, read before JS loads. -->
     <meta
       name="description"
