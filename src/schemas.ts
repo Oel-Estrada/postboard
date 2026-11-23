@@ -14,3 +14,14 @@ export const userSchema = z.object({
 
 /** A user as validated by {@link userSchema}. */
 export type User = z.infer<typeof userSchema>
+
+/** A JSONPlaceholder post. */
+export const postSchema = z.object({
+  userId: z.number(),
+  id: z.number(),
+  title: z.string(),
+  body: z.string(),
+})
+
+/** A post as validated by {@link postSchema}. */
+export type Post = z.infer<typeof postSchema>
