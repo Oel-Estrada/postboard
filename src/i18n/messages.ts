@@ -33,4 +33,8 @@ export const messages = {
     published: 'Post published.',
     publishError: "Couldn't publish the post. Try again.",
   },
+  posts: {
+    pending: 'Publishing…',
+    empty: 'This user has no posts yet.',
+  },
 }
