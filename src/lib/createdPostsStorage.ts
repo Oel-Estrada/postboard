@@ -5,13 +5,13 @@ import { postEntrySchema, type PostEntry } from '../schemas'
 // blocked, and what is stored can be corrupt or from an older format.
 
 /** Versioned prefix: a new format gets a new version instead of reading old data. */
-export const CREATED_POSTS_KEY_PREFIX = 'postboard:created-posts:v1'
+const CREATED_POSTS_KEY_PREFIX = 'postboard:created-posts:v1'
 
 /**
  * @param userId - Id of the user who created the posts.
  * @returns The storage key of that user's created posts.
  */
-export function getCreatedPostsKey(userId: number): string {
+function getCreatedPostsKey(userId: number): string {
   return `${CREATED_POSTS_KEY_PREFIX}:${userId}`
 }
 
@@ -19,7 +19,7 @@ export function getCreatedPostsKey(userId: number): string {
  * @param value - Anything read from storage.
  * @returns Whether `value` is a valid {@link PostEntry}.
  */
-export function isPostEntry(value: unknown): value is PostEntry {
+function isPostEntry(value: unknown): value is PostEntry {
   return postEntrySchema.safeParse(value).success
 }
 
