@@ -109,7 +109,8 @@ El objetivo es demostrar que se sabe testear en las tres capas, no acumular cant
   tiempo».
 - Cada pieza añade solo las claves que usa, en su mismo commit.
 - Los tests unitarios y E2E importan los textos de `messages` en vez de repetir literales. Las
-  funciones de `messages` se prueban a través de los componentes que las usan.
+  funciones de `messages` que interpolan datos se prueban en `src/i18n/messages.test.ts`
+  comparando con literales (un test, una aserción por función; cada pieza añade la suya).
 - Única excepción: el `<title>` estático de `index.html`, que se pinta antes de que cargue JS.
 
 ### React 19

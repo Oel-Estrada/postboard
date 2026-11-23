@@ -214,6 +214,13 @@ se declararía con `satisfies typeof messages`). Los textos con datos son funcio
 componentes y los tests importan las claves; ninguno repite el literal. Cada pieza añade solo
 las claves que usa, en su mismo commit.
 
+**Excepción: los textos con datos.** Un test que compara con `messages` no detecta una función
+rota (en P5.5, `usernameHandle` devolvía `@` sin el nombre y el test seguía en verde). Por eso
+las funciones que interpolan datos se prueban en `src/i18n/messages.test.ts` comparando con
+literales: un solo test, `it('interpolates data into the texts that need it')`, con una
+aserción por función. Cada pieza que añade una de estas funciones añade su aserción en el mismo
+commit.
+
 | Clave de `messages` | Texto | Dónde | Pieza |
 | --- | --- | --- | --- |
 | `app.title` | `Postboard` | `h1` y `<title>` sin usuario | P3.1 |
@@ -347,7 +354,7 @@ de su validación. `src/types.ts` queda solo para los tipos internos que nada de
 src/
   api/         client.ts, users.ts, posts.ts                          (+ *.test.ts)
   hooks/       useUsers.ts, useUserPosts.ts, useCreatedPosts.ts       (+ *.test.ts)
-  i18n/        messages.ts           (sin test propio: se prueba a través de los componentes)
+  i18n/        messages.ts, messages.test.ts   (solo los textos con datos, contra literales)
   components/  UserSearch, UserList, LoadingMessage, ErrorMessage,
                SubmitButton, PostList                     (.tsx + .test.tsx: unitarios)
                UsersPanel, PostForm, PostsPanel           (.tsx + .integration.test.tsx)
@@ -428,8 +435,8 @@ Cada una tiene un test en la pieza que la resuelve.
 
 ## 8. Pirámide de tests
 
-Presupuesto orientativo: ~30 unitarios, ~10 de integración y 4 E2E. Salen **34 unitarios, 14 de
-integración y 4 E2E (52)**. Pasan un poco del presupuesto porque cada pieza (y cada componente)
+Presupuesto orientativo: ~30 unitarios, ~10 de integración y 4 E2E. Salen **36 unitarios, 14 de
+integración y 4 E2E (54)**. Pasan un poco del presupuesto porque cada pieza (y cada componente)
 se commitea con al menos un test propio. Esta tabla irá al README.
 
 | Capa | Pieza | Archivo | Tests | Qué defienden |
@@ -440,7 +447,7 @@ se commitea con al menos un test propio. Esta tabla irá al README.
 | Unitario | P4.3 `getPostsByUser` | `api/posts.test.ts` | 1 | Ruta y `userId` |
 | Unitario | P4.4 `createPost` | `api/posts.test.ts` | 1 | Método, cabecera y cuerpo JSON |
 | Unitario | P5.1 `filterUsersByName` | `lib/filterUsersByName.test.ts` | 2 | Búsqueda vacía; mayúsculas y espacios |
-| Unitario | P5.2 `useUsers` | `hooks/useUsers.test.ts` | 3 | Carga → éxito; error → reintento; cancelación al desmontar |
+| Unitario | P5.2 `useUsers` | `hooks/useUsers.test.ts` | 4 | Carga → éxito; error → reintento; cancelación al desmontar; sin destello de error en StrictMode |
 | Unitario | P5.3 `UserSearch` | `components/UserSearch.test.tsx` | 1 | Label accesible y lo que se escribe |
 | Unitario | P5.4 `getInitials` | `lib/getInitials.test.ts` | 2 | Dos primeras palabras; tratamientos |
 | Unitario | P5.5 `UserList` | `components/UserList.test.tsx` | 1 | Un botón por usuario y el seleccionado marcado |
@@ -453,7 +460,8 @@ se commitea con al menos un test propio. Esta tabla irá al README.
 | Unitario | P6.4 `useCreatedPosts` | `hooks/useCreatedPosts.test.ts` | 2 | Lee y guarda; escribe con su `userId` tras desmontar |
 | Unitario | P6.5 `SubmitButton` | `components/SubmitButton.test.tsx` | 1 | Estado pendiente con `useFormStatus` |
 | Unitario | P6.7 `PostList` | `components/PostList.test.tsx` | 3 | XSS como texto; post pendiente; lista vacía |
-| **Unitarios** | | | **34** | |
+| Unitario | P5.5 `messages` | `i18n/messages.test.ts` | 1 | Textos con datos comparados con literales (una aserción por función) |
+| **Unitarios** | | | **36** | |
 | Integración | P5.8 `UsersPanel` | `components/UsersPanel.integration.test.tsx` | 2 | Carga → usuarios; búsqueda y «sin resultados» |
 | Integración | P5.10 `App` (layout) | `App.integration.test.tsx` | 1 | Lista → detalle → lista con el foco en móvil |
 | Integración | P5.11 `App` (`<title>`) | `App.integration.test.tsx` | 1 | Título de la página por usuario |
@@ -466,7 +474,7 @@ se commitea con al menos un test propio. Esta tabla irá al README.
 | E2E | P8.3 Errores | `e2e/errors.spec.ts` | 1 | Error de la API y «Try again» lo recupera |
 | E2E | P8.4 Móvil | `e2e/mobile.spec.ts` | 1 | 320px: lista → detalle → «Back to users», sin scroll horizontal |
 | **E2E** | | | **4** | |
-| **Total** | | | **52** | |
+| **Total** | | | **54** | |
 
 El test trivial de `App` de P3.1 no cuenta: en P5.10 se convierte en el test de integración del
 layout.
@@ -649,6 +657,10 @@ layout.
     `error`; tras `retry()`, `success`.
   - `it('aborts the request on unmount')`: el handler guarda `request.signal`; tras `unmount()`,
     `signal.aborted === true`.
+  - `it('does not flash an error when StrictMode aborts the first request')`: con
+    `renderHook(…, { reactStrictMode: true })` se apuntan los estados; nunca pasa por `error` y
+    acaba en `success`. El handler marca que ha llegado la segunda petición y espera a una
+    promesa que suelta el test, para que React no junte el rechazo de la primera con el éxito.
 - [ ] **Commit:** `feat: add useUsers hook with abort on unmount`
 
 ### P5.3 `UserSearch`
@@ -669,14 +681,15 @@ layout.
 - **Comportamiento:** descarta las palabras que terminan en `.` (tratamientos como Mrs.) y toma
   la primera letra de las dos primeras palabras que quedan, en mayúsculas.
 - **Tests:**
-  - `it('takes the first letter of the first two words')`: `'Leanne Graham'` → `'LG'` y
-    `'Nicholas Runolfsdottir V'` → `'NR'`.
+  - `it('takes the first letter of the first two words')`: `'Leanne Graham'` → `'LG'`,
+    `'Nicholas Runolfsdottir V'` → `'NR'` y `'ervin howell'` → `'EH'` (mayúsculas).
   - `it('skips honorifics')`: `'Mrs. Dennis Schulist'` → `'DS'`.
 - [ ] **Commit:** `feat: add getInitials helper`
 
 ### P5.5 `UserList`
 
-- **Archivos:** `src/components/UserList.tsx` y `.test.tsx`.
+- **Archivos:** `src/components/UserList.tsx` y `.test.tsx`, y `src/i18n/messages.test.ts`
+  (primera función con datos).
 - **Props:** `{ users: User[]; selectedUserId: number | null; onSelect: (user: User) => void }`.
   Es un `<ul>` con un `<button>` por usuario (`min-h-11`) que muestra el monograma
   (`aria-hidden`), el nombre y `messages.users.usernameHandle(username)` (`@username`). El
@@ -686,6 +699,8 @@ layout.
   - `it('renders a button per user and marks the selected one as current')`: un botón por
     usuario con su `usernameHandle`, y `getByRole('button', { current: true })` contiene
     «Leanne Graham».
+  - `it('interpolates data into the texts that need it')` (en `messages.test.ts`):
+    `usernameHandle('Bret')` → `'@Bret'`.
 - [ ] **Commit:** `feat: add UserList component`
 
 ### P5.6 `LoadingMessage`
